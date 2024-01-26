@@ -1,10 +1,15 @@
+import numpy as np
+
+
 #Returns an element of a polynomial Ring, sampled uniformly
-def sampleUniform():
+def sampleUniform(Bound, v, sigma):
     return 0
 
 #Returns an element of a polynomial Ring, sampled from a gaussian distribution
-def sampleGaussian():
-    return 0
+def sampleGaussian(N, v, sigma):
+    mean = v
+    cov = np.diag(np.ones(N)*sigma)
+    return np.random.default_rng().multivariate_normal(mean, cov).T
 
 #sample randomness
 def sampleRandomness():
