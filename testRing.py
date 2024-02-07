@@ -14,12 +14,14 @@ p3 = (Poly(-12288*x, modulus=q)  * (p - Poly(2*x**N, modulus=q)))
 print(p3)
 print(p3.rem(p))
 import matplotlib.pyplot as plt
-mean = np.zeros(N)
-cov = np.diag(np.ones(N))
-x = np.random.default_rng().multivariate_normal(mean, cov, 5000).T
+mean = np.zeros(N) +q/2
+v = 14
+cov = np.diag(np.ones(N))*(v*np.sqrt(N))**2
+print(v*np.sqrt(N))
+x = np.random.default_rng().multivariate_normal(mean, cov, 1).T
+print(np.round(x))
 
-plt.plot(x[0], x[1], 'x')
 
+plt.plot(x, range(0, N), 'x')
 plt.axis('equal')
-
 plt.show()
