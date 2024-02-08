@@ -11,10 +11,10 @@ def BGVKeyGen(i, u, t, n, d):
     #broadcast hai and ai
     As = receiveA()
     HAs = receiveHA()
-    for(j in range(u)):
+    for j in range(u):
         if(j == i):
             continue
-        if(hashElement(As[j]) != HAs[j])
+        if(hashElement(As[j]) != HAs[j]):
             return -j
     a = sum(As)
     si = sampleGaussian()
@@ -27,25 +27,25 @@ def BGVKeyGen(i, u, t, n, d):
     sharedSIs = secretShare(si)
     sharedEIs = secretShare(ei)
     sharedBIs = []
-    for for(j in range(u)):
-        if(j == i):
+    for j in range(u):
+        if j == i:
             continue
     #Loop adding a * shared sij + p * shared eij to BIs
     COMSIJs = []
     COMEIJs = []
     #Loops commiting for sij and eij
     SKproofs = []
-        for(j in range(u)):
-            skproof = proveSK()
+    for j in range(u):
+        skproof = proveSK()
     #broadcast commits, bi, bijs
     Bs = receiveB()
     BJs = receiveBJ()
-    for(j in range(u)):
+    for j in range(u):
         if(j == i):
             continue
-        if(hashElement(Bs[j]) != HBs[j])
+        if(hashElement(Bs[j]) != HBs[j]):
             return -j
-    for(j in range(u)):   
+    for j in range(u):   
         if(reconstructSecrets(BJs[j]) != Bs[j]):
             return -j
         if(openCommitment() == 0):
