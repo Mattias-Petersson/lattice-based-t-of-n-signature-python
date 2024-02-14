@@ -3,14 +3,15 @@ from BasicFunctions import sampleUniform
 
 type PP = tuple[np.ndarray, np.ndarray]
 
+
 class CommitmentScheme:
     """
     A basic commitment scheme. q is chosen such that q = 2d + 1 mod (4d), 
     with d = 8. q is also set to be a prime approximately equal to 2^32.
-    
+
     """
-    
-    def keyGen(self, l: int = 1, k: int = 3, q = 2^32 - 527, n: int = 1) -> PP:
+
+    def keyGen(self, l: int = 1, k: int = 3, q: int = 2 ^ 32 - 527, n: int = 1) -> PP:
         A1 = np.zeros((k, n))
         A2 = np.zeros((k, l))
         A1prime = np.zeros((k-n, n))
@@ -33,7 +34,7 @@ class CommitmentScheme:
             A1[i] = ident[i]
         for i in range(n, k):
             A1[i] = A1prime[i-n]
-        
+
         ident = np.identity(l)
         zer = np.zeros((l, n))
         for i in range(0, l):
@@ -45,14 +46,14 @@ class CommitmentScheme:
 
         return (A1, A2)
 
-
     def commit(self):
         pass
 
     def open(self):
         pass
 
+
 B = CommitmentScheme()
 
-keys = B.keyGen(1, 3, 2^32 - 527, 1)
+keys = B.keyGen()
 print(keys[0], keys[1])
