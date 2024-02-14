@@ -5,7 +5,7 @@ import numpy as np
 def sampleUniform(N, mean, sigma, q):
     res = np.zeros(N)
     for i in range (0, N):
-        res[i] = np.random.randint(mean-sigma, mean+sigma) % q
+        res[i] = np.random.randint(mean+sigma, mean-sigma) % q
     return res
 
 #Returns an element of a polynomial Ring, sampled from a gaussian distribution
