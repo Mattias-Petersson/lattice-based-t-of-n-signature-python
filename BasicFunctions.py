@@ -2,17 +2,17 @@ import numpy as np
 
 
 #Returns an element of a polynomial Ring, sampled uniformly
-def sampleUniform(N, mean, sigma):
+def sampleUniform(N, mean, sigma, q):
     res = np.zeros(N)
     for i in range (0, N):
-        res[i] = np.random.randint(mean-sigma, mean+sigma)
+        res[i] = np.random.randint(mean-sigma, mean+sigma) % q
     return res
 
 #Returns an element of a polynomial Ring, sampled from a gaussian distribution
-def sampleGaussian(N, v, sigma):
+def sampleGaussian(N, v, sigma, q):
     mean = v
     cov = np.diag(np.ones(N)*(sigma**2))
-    return round(np.random.default_rng().multivariate_normal(mean, cov).T)
+    return (round(np.random.default_rng().multivariate_normal(mean, cov).T) % q)
 
 def sampleKnuth(P, r, q):
     d = 0

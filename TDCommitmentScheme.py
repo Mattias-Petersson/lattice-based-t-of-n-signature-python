@@ -17,7 +17,7 @@ class TDCommitmentScheme:
         :param n int: The degree of the irreducible polynomial, default 256.
 
     """
-
+    print("hey")
     def __init__(self, q: int = 8380417, N: int = 256):
         print(q, N)
 
