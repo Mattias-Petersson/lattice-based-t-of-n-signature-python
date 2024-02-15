@@ -83,24 +83,22 @@ class CommitmentScheme:
 
     def commit(self, message: np.ndarray, r: np.ndarray) -> np.ndarray:
         """
-        Commit to message x. 
+        Commit to a message with randomness r. 
         """
         C = np.transpose(np.hstack((self.A1, self.A2)))
         C = np.matmul(C, r)
         message = np.transpose(np.hstack((np.zeros(self.n), message)))
         return np.add(C, message)
 
-    def open(self, C, r, x):
+    def open(self, C, r, message):
         Xtend = np.zeros(self.n + self.l)
         for i in range(self.n, self.n+self.l):
-            Xtend[i] = x[i-self.n]
+            Xtend[i] = message[i-self.n]
         f = 0
-        while f == 0:
+        while f is 0:
             f1 = sampleUniform(1, 0, 1, self.q)
             f2 = sampleUniform(1, 0, 1, self.q)
-            # TODO: Add check so that f1 and f2 are not the same
             f = np.subtract(f1, f2)
-        # incorrect
         print(f)
         A = np.hstack((self.A1, self.A2))
         Comp1 = np.matmul(np.transpose(A), r) + f * np.transpose(Xtend)
