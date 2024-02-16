@@ -23,6 +23,8 @@ class CommitmentScheme:
         self.q = q
         self.n = n
         self.distributionValues = (n, (q-1)/2, (q-1)/2, q)
+        self.N = 1024
+        self.sigma = 11 * 36 * 1 * math.sqrt(self.k * self.N)
 
         self.A1 = np.zeros((k, n))
         self.A2 = np.zeros((k, l))
@@ -55,7 +57,7 @@ class CommitmentScheme:
 
     def getL(self) -> int:
         return self.l
-
+    
     def checkRandomness(self, randomness: np.ndarray) -> bool:
         """
         Ensures that the randomness selected is within allowed bounds.
@@ -64,13 +66,14 @@ class CommitmentScheme:
         #TODO: Decide if this should be made private or not. 
         sigma = 11 * kappa * Beta * sqrt(k * N)
         """
-        N = 1024
-        sigma = 11 * 36 * 1 * math.sqrt(self.k * N)
-        bound = 4 * sigma * math.sqrt(N)
+        
+        bound = 4 * self.sigma * math.sqrt(self.N)
+        sum = 0
+        
         for i in randomness:
-            if math.sqrt(np.sum(i)) > bound:
-                return False
-        return True
+            temp = i ** 2
+            sum += temp
+        return math.sqrt(sum) > bound
 
     def getR(self) -> np.ndarray:
         _, *dist = self.distributionValues
@@ -86,7 +89,7 @@ class CommitmentScheme:
         Commit to a message with randomness r. 
         """
         C = np.transpose(np.hstack((self.A1, self.A2)))
-        C = np.matmul(C, r)
+        C = np.matmul(C, r) % self.q
         message = np.transpose(np.hstack((np.zeros(self.n), message)))
         return np.add(C, message)
 
@@ -94,17 +97,14 @@ class CommitmentScheme:
         Xtend = np.zeros(self.n + self.l)
         for i in range(self.n, self.n+self.l):
             Xtend[i] = message[i-self.n]
-        f = 0
-        while f is 0:
+        f = [0]
+        while f[0] == 0:
             f1 = sampleUniform(1, 0, 1, self.q)
             f2 = sampleUniform(1, 0, 1, self.q)
-            f = np.subtract(f1, f2)
-        print(f)
+            f = np.subtract(f1, f2) % self.q 
         A = np.hstack((self.A1, self.A2))
-        Comp1 = np.matmul(np.transpose(A), r) + f * np.transpose(Xtend)
-        Comp2 = f * C
-        print(Comp1)
-        print(Comp2)
+        Comp1 = (np.matmul(np.transpose(A), r) + f * np.transpose(Xtend)) % self.q
+        Comp2 = (f * C) % self.q
         equals = True
         for i in range(len(Comp1)):
             if Comp1[i] != Comp2[i]:
@@ -122,6 +122,8 @@ def main():
     opening = B.open(com, randomness, message)
     print("Open: \n", opening)
     # B.commit(x)
+
+
 
 
 if __name__ == "__main__":

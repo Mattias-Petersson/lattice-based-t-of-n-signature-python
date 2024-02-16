@@ -11,10 +11,13 @@ def sampleUniform(N, mean, sigma, q):
 # Returns an element of a polynomial Ring, sampled from a gaussian distribution
 
 
-def sampleGaussian(N, v, sigma, q):
-    mean = v
+def sampleGaussian(N, mean, sigma, q):
     cov = np.diag(np.ones(N)*(sigma**2))
-    return (round(np.random.default_rng().multivariate_normal(mean, cov).T) % q)
+    unrounded = (np.random.default_rng().multivariate_normal(mean, cov).T) % q
+    rounded = np.zeros(N)
+    for i in range(N):
+        rounded[i] = round(unrounded[i])
+    return rounded
 
 
 def sampleKnuth(P, r, q):
