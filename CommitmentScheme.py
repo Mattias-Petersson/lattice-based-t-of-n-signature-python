@@ -22,7 +22,7 @@ class CommitmentScheme:
         self.k = k
         self.q = q
         self.n = n
-        self.distributionValues = (n, (q-1)/2, (q-1)/2, q)
+        self.distributionValues = (n, 0, (q-1)/2, q)
         self.N = 1024
         self.sigma = 11 * 36 * 1 * math.sqrt(self.k * self.N)
 
@@ -33,24 +33,24 @@ class CommitmentScheme:
 
         for i in range(0, k-n-l):
             A1prime[i] = sampleUniform(*self.distributionValues)
-            A2prime[i] = sampleUniform(*self.distributionValues)
+            A2prime[i] = sampleUniform(*self.distributionValues) 
         for i in range(k-n-l, k-n):
-            A1prime[i] = sampleUniform(*self.distributionValues)
+            A1prime[i] = sampleUniform(*self.distributionValues) 
 
         ident = np.identity(n)
         for i in range(0, n):
-            self.A1[i] = ident[i]
+            self.A1[i] = ident[i] 
         for i in range(n, k):
-            self.A1[i] = A1prime[i-n]
+            self.A1[i] = A1prime[i-n] 
 
         ident = np.identity(l)
         zer = np.zeros((l, n))
         for i in range(0, l):
-            self.A2[i] = zer[i]
+            self.A2[i] = zer[i] 
         for i in range(l, 2*l):
-            self.A2[i] = ident[i-l]
+            self.A2[i] = ident[i-l] 
         for i in range(2*l, k):
-            self.A2[i] = A2prime[i-2*l]
+            self.A2[i] = A2prime[i-2*l]  
 
     def __str__(self):
         return "A1: " + str(self.A1) + "\n A2: " + str(self.A2)
@@ -69,18 +69,16 @@ class CommitmentScheme:
         
         bound = 4 * self.sigma * math.sqrt(self.N)
         sum = 0
-        
-        for i in randomness:
-            temp = i ** 2
-            sum += temp
-        return math.sqrt(sum) > bound
+        for r in randomness:
+            sum += r**2
+        return math.sqrt(sum % self.q) <= bound
 
     def getR(self) -> np.ndarray:
-        _, *dist = self.distributionValues
+       # _, *dist = self.distributionValues
         allowedNorm = False
         randomness = np.zeros(self.k)
         while not allowedNorm:
-            randomness = sampleUniform(self.k, *dist)
+            randomness = sampleUniform(self.k, 0, self.sigma, self.q)
             allowedNorm = self.checkRandomness(randomness)
         return randomness
 
@@ -88,10 +86,15 @@ class CommitmentScheme:
         """
         Commit to a message with randomness r. 
         """
+        print("A1: ", self.A1)
+        print("A1 * r", np.dot(np.transpose(self.A1), r) % self.q)
         C = np.transpose(np.hstack((self.A1, self.A2)))
-        C = np.matmul(C, r) % self.q
+        print("C: ", C)
+        C = np.dot(C, r) % self.q
+        print("C: ", C)
         message = np.transpose(np.hstack((np.zeros(self.n), message)))
-        return np.add(C, message)
+        print("mess", message)
+        return ((C + message) % self.q)
 
     def open(self, C, r, message):
         Xtend = np.zeros(self.n + self.l)
@@ -101,13 +104,18 @@ class CommitmentScheme:
         while f[0] == 0:
             f1 = sampleUniform(1, 0, 1, self.q)
             f2 = sampleUniform(1, 0, 1, self.q)
-            f = np.subtract(f1, f2) % self.q 
+            f = [1]#np.subtract(f1, f2) % self.q 
         A = np.hstack((self.A1, self.A2))
-        Comp1 = (np.matmul(np.transpose(A), r) + f * np.transpose(Xtend)) % self.q
+        print(Xtend)
+        print(C)
+        print(f)
+        print(f * np.transpose(Xtend))
+        Comp1 = (np.dot(np.transpose(A), r) + (f * np.transpose(Xtend))) % self.q
         Comp2 = (f * C) % self.q
         equals = True
         for i in range(len(Comp1)):
             if Comp1[i] != Comp2[i]:
+                print(Comp1[i] - Comp2[i], i)
                 equals = False
         return equals
 
@@ -117,6 +125,7 @@ def main():
     l = B.getL()
     message = np.array([1], ndmin=l)
     randomness = B.getR()
+    print("Randomness: ", randomness)
     com = B.commit(message, randomness)
     print("Commitment: \n", com, "\n")
     opening = B.open(com, randomness, message)
