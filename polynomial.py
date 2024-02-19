@@ -25,7 +25,7 @@ class Polynomial:
         return self.arr.__str__()
 
     def __str__(self):
-        return "I am a poly"
+        return self.arr.__str__()
     
 def convert3dToPoly(x, N, q):
     nodes = [[Polynomial(N, q, x[i][j]) for j in range(len(x[0]))] for i in range(len(x))]

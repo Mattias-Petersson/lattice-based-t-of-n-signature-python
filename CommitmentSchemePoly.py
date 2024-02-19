@@ -23,10 +23,6 @@ class CommitmentScheme:
         def __makeA1(self):
             A1prime = sampleUniform((n, k-n, self.N), *self.uniformValues)
             ident = __makeIdentity3d(self, (np.identity(n)))
-            print("Ident:",ident.shape)
-            print("A1:",A1prime.shape)
-            print(A1prime)
-            print(convert3dToPoly(A1prime, self.N, self.q))
             return np.concatenate([ident, A1prime], axis=1)
 
         def __makeA2(self):
@@ -66,6 +62,7 @@ class CommitmentScheme:
         """
         Generate a random polynomial vector bounded by S_{beta} of length k.
         """
+        #TODO: This should create a length k vector of polynomials (power N), currently only creates 1 polynomial
         r = np.random.randint(-1, 2, size=self.N)
         while lin.norm(r, np.inf) == 0:  # In case we get an all zero vector.
             r = np.random.randint(-1, 2, size=self.N)
@@ -78,7 +75,11 @@ class CommitmentScheme:
             r = np.random.randint(-bound, bound, size=self.k)
         return np.reshape(r, (self.k, 1))"""
 
-    def getF(self):
+    def getF(self, honest):
+        if honest:
+            poly = np.zeros(self.N)
+            poly[0] = 1
+            return poly
         c1 = self.getChallenge()
         c2 = self.getChallenge()
         while (np.array_equal(c1, c2)):
@@ -102,18 +103,14 @@ class CommitmentScheme:
         return c
 
     def commit(self, x, r):
-        print("shape A12: ", self.A1A2.shape)
         Ar = convert3dToPoly(self.A1A2, self.N, self.q) * Polynomial(self.N, self.q, r)
-        print("Ar: ", Ar)
         zerox = [convert2dToPoly(np.zeros((self.n, self.N)), self.N, self.q)] + [x]
-        print("zerox:", zerox)
         return np.add(Ar, zerox)
 
     def open(self, C, r, x, f):
         """
         f * C = A1A2 * r + F * ZeroX
         """
-        print("C in open:", C)
         lhs = C
         for i in range(len(lhs)):
             for j in range(len(lhs[0])):
@@ -124,7 +121,6 @@ class CommitmentScheme:
             for j in range(len(Ar[0])):
                 Ar[i][j] = Ar[i][j] * r
         zerox = [Polynomial(self.N, self.q)] + x
-        print("zerox: ", zerox)
         fz = zerox
         for i in range(len(fz)):
             fz[i] = f * fz[i]
@@ -165,7 +161,7 @@ def works():
     #idx = np.random.randint(2)
     c2 = C.commit(m, rCommit)
     print(c2)
-    open = C.open(c2, Polynomial(C.N, C.q, rCommit), m, Polynomial(C.N, C.q, C.getF()))
+    open = C.open(c2, Polynomial(C.N, C.q, rCommit), m, Polynomial(C.N, C.q, C.getF(True)))
     return open
 
 """
@@ -180,7 +176,7 @@ def doesntWork():
 if __name__ == "__main__":
     C = CommitmentScheme()
     counts = dict()
-    for _ in range(1):
+    for _ in range(100):
         # open = doesntWork()
         open = works()
         counts[open] = counts.get(open, 0) + 1
