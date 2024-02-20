@@ -47,9 +47,6 @@ class Polynomial:
     def __eq__(self, b):
         for i in range(self.N):
             if self.arr[i] != b.arr[i]:
-                print(self.arr[i] - b.arr[i])
-                print((self.arr[i] - b.arr[i]) % self.q)
-                print((-(self.arr[i] - b.arr[i]))% self.q)
                 return False
         return True
 
@@ -66,9 +63,13 @@ def convert2dToPoly(x, N, q):
     nodes = [Polynomial(N, q, x[i])  for i in range(len(x))]
     return np.array(nodes)
 
-p1 = convert3dToPoly([[[0, 1], [0, 2]], [[0, 3], [0, 4]]], 2, 7)
-p2 = convert3dToPoly([[[0, 1], [0, 1]], [[0, 1], [0, 1]]], 2, 7)
-p3 = convert3dToPoly([[[0, 2], [0, 2]], [[0, 2], [0, 2]]], 2, 7)
+p1 = convert3dToPoly([[[0, 1], [0, 2]]], 2, 7)
+p2 = convert3dToPoly([[[0, 1]], [[0, 1]]], 2, 7)
+p3 = Polynomial(2, 7, np.array([1, 1]))
 
-print(np.matmul(p1, p2) + np.matmul(p1, p3))
-print(np.matmul(p1, p2 + p3))
+print("shape: ", np.matmul(p1, p2).shape)
+print(p3 * np.matmul(p1, p2)[0][0])
+temp = p2
+for i in range(len(p2)):
+    temp[i] = p3 * temp[i][0]
+print(np.matmul(p1, temp))
