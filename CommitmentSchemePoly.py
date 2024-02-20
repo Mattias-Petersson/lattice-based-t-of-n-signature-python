@@ -58,15 +58,22 @@ class CommitmentScheme:
     def __str__(self):
         return "A: " + str(self.A1A2)
 
-    def getRCommit(self) -> np.ndarray:
+    def getRCommit(self): #-> np.ndarray[Any, Any]:
         """
         Generate a random polynomial vector bounded by S_{beta} of length k.
         """
         #TODO: This should create a length k vector of polynomials (power N), currently only creates 1 polynomial
-        r = np.random.randint(-1, 2, size=self.N)
-        while lin.norm(r, np.inf) == 0:  # In case we get an all zero vector.
-            r = np.random.randint(-1, 2, size=self.N)
-        return r
+        r1 = np.random.randint(-1, 2, size=self.N)
+        while lin.norm(r1, np.inf) == 0:  # In case we get an all zero vector.
+            r1 = np.random.randint(-1, 2, size=self.N)
+        r2 = np.random.randint(-1, 2, size=self.N)
+        while lin.norm(r2, np.inf) == 0:  # In case we get an all zero vector.
+            r2 = np.random.randint(-1, 2, size=self.N)
+        r3 = np.random.randint(-1, 2, size=self.N)
+        while lin.norm(r3, np.inf) == 0:  # In case we get an all zero vector.
+            r3 = np.random.randint(-1, 2, size=self.N)
+    
+        return [r1, r2, r3]
 
     """def getROpen(self) -> np.ndarray:
         bound = math.floor(4 * self.sigma * math.sqrt(self.N))
@@ -103,9 +110,11 @@ class CommitmentScheme:
         return c
 
     def commit(self, x, r):
-        Ar = convert3dToPoly(self.A1A2, self.N, self.q) * Polynomial(self.N, self.q, r)
-        zerox = [convert2dToPoly(np.zeros((self.n, self.N)), self.N, self.q)] + [x]
-        return np.add(Ar, zerox)
+        Ar = np.matmul(convert3dToPoly(self.A1A2, self.N, self.q), convert2dToPoly(r, self.N, self.q))
+        zerox = np.vstack((np.array([convert2dToPoly(np.zeros((self.n, self.N)), self.N, self.q)]), np.array([x])))
+        for i in range(2):
+            Ar[i] = Ar[i] + zerox[i][0]
+        return Ar
 
     def open(self, C, r, x, f):
         """
@@ -113,23 +122,19 @@ class CommitmentScheme:
         """
         lhs = C
         for i in range(len(lhs)):
-            for j in range(len(lhs[0])):
-                lhs[i][j] = f * lhs[i][j]
+                lhs[i] = f * lhs[i]
 
         Ar = convert3dToPoly(self.A1A2, self.N, self.q)
-        for i in range(len(Ar)):
-            for j in range(len(Ar[0])):
-                Ar[i][j] = Ar[i][j] * r
-        zerox = [Polynomial(self.N, self.q)] + x
+        Ar = np.matmul(Ar, r)
+        zerox = np.array([Polynomial(self.N, self.q), x])
         fz = zerox
         for i in range(len(fz)):
             fz[i] = f * fz[i]
         rhs = np.add(Ar, fz)
         for i in range(len(lhs)):
-            for j in range(len(lhs[0])):
-                if not (np.array_equal(lhs[i][j].arr, rhs[i][j].arr)):
-                    print("lhs rhs not equals \n lhs: ", lhs[i][j].arr, "\n rhs: ", rhs[i][j].arr, "\n at: (i, j): (", i, ",", j, ")")
-                    return False
+            if not (np.array_equal(lhs[i].arr, rhs[i].arr)):
+                print("lhs rhs not equals \n lhs: ", lhs[i].arr, "\n rhs: ", rhs[i].arr, "\n at: i: (", i, ")")
+                return False
         return True
 
     def open2(self, C, r, x, f):
@@ -154,14 +159,13 @@ def works():
     Also, if an (honest) committer would like to simply open the commitment (without
     giving a zero-knowledge proof), he can simply output the r, x from (7) and f = 1.
     """
-    m = convert2dToPoly(np.zeros((1, 1024)), 1024, 2 ** 32 - 527)#np.random.randint(C.q, size=C.l)
+    m = Polynomial(1024, 2 ** 32 - 527, np.zeros(1024))#np.random.randint(C.q, size=C.l)
     rCommit = C.getRCommit()
     #rOpen = C.getROpen()
     #randomR = [rCommit, rOpen]
     #idx = np.random.randint(2)
     c2 = C.commit(m, rCommit)
-    print(c2)
-    open = C.open(c2, Polynomial(C.N, C.q, rCommit), m, Polynomial(C.N, C.q, C.getF(True)))
+    open = C.open(c2, convert2dToPoly(rCommit, C.N, C.q), m, Polynomial(C.N, C.q, C.getF(True)))
     return open
 
 """
@@ -176,7 +180,7 @@ def doesntWork():
 if __name__ == "__main__":
     C = CommitmentScheme()
     counts = dict()
-    for _ in range(100):
+    for _ in range(10):
         # open = doesntWork()
         open = works()
         counts[open] = counts.get(open, 0) + 1
