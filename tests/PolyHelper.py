@@ -27,8 +27,19 @@ class TestMultiplications(unittest.TestCase):
                 self.assertTrue(pol.has_samecoef(col, expected))
 
     def test_matmul_vector_matrix(self):
-        coeffs = np.array([pol(self.coeffs)])
-        print()
+        """
+        Multiply a vector of length 2 with a 2x2 matrix when all entries are 
+        polynomials. 
+        """
+        arr = np.array([self.poly, self.poly])
+        matrix = np.array(
+            [[self.poly, self.poly], [self.poly, self.poly]])
+        res = self.PH.matmul(arr, matrix)
+        singleRowCol = self.PH.polymul(self.poly, self.poly)
+        oneMultiplication = self.PH.add(singleRowCol, singleRowCol)[0]
+
+        for poly in res:
+            self.assertTrue(pol.has_samecoef(oneMultiplication, poly))
 
 
 if __name__ == "__main__":
