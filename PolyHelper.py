@@ -79,3 +79,25 @@ class PolyHelper:
         res = np.matmul(p1, p2)
         x = self._reduceRes(res)
         return x
+        """
+        if p1.ndim == 1:
+            p1 = p1.reshape((1, len(p1)))
+        if p2.ndim == 1:
+            p2 = p2.reshape((len(p2), 1))
+        if len(p1[0]) != len(p2):
+            raise ValueError()
+        res = []
+        for i in range(len(p1)):
+            innerRes = []
+            for j in range(len(p2[0])):
+                sum = pol(np.zeros(self.N))
+                for k in range(len(p1[0])):
+                    sum = polMath.polyadd(sum, self.polymul(p1[i][k], p2[k][j]))[0]
+                innerRes.append(sum)
+            res.append(innerRes)
+        if len(res[0]) == 1:
+            tempres = []
+            for i in range(len(res)):
+                tempres.append(res[i][0])
+            res = tempres
+        return np.array(res)"""
