@@ -20,12 +20,18 @@ class BDLOPZK:
         dr = self.PH.polymul(d, r)
         rd = self.PH.polymul(r, d)
         c1 = self.PH.matmul(A1, r)
+        print("a1*r: ", c1)
+        dc1 = self.PH.polymul(d, c1)
+        a1dr = self.PH.matmul(A1, dr)
+        print(dc1)
+        print(a1dr)
         print("dc1 = a1dr = ", np.array_equal(
-            self.PH.polymul(d, c1), self.PH.matmul(A1, dr)))
+            dc1, a1dr))
         print("rd = dr", np.array_equal(dr, rd))
         t = self.PH.matmul(A1, y)
+        print("T: ", t)
         lhs1 = self.PH.matmul(A1, self.PH.add(y, dr))
-        rhs1 = self.PH.polymul(d, self.PH.matmul(A1, r))
+        rhs1 = self.PH.polymul(d, c1)
         # print("A_1*dr = A_1*rd", np.array_equal(lhs1, rhs1))
         # lhs2 = self.PH.add(t, lhs1)
         rhs2 = self.PH.add(t, rhs1)
@@ -79,6 +85,7 @@ def main():
         c, r = commit(CommScheme)
         A1 = CommScheme.A1
         proof = ZK.proofOfOpening(r)
+        print("c1: ", [c[0]])
         didProve = ZK.checkProofOfOpening(A1, *proof, c)
         proofs[didProve] = proofs.get(didProve, 0) + 1
     print(proofs)
