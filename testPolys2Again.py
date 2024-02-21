@@ -35,7 +35,7 @@ class CommitmentScheme:
 
     def getROpen(self) -> np.ndarray:
         bound = math.floor(4 * self.sigma * math.sqrt(self.N))
-        r = C.PH.boundedArray(self.k, round(bound / 20))
+        r = self.PH.boundedArray(self.k, round(bound / 20))
         for poly in r:
             while lin.norm(poly.coef, 2) > bound:
                 poly.coef = C.PH.boundedElement(bound).coef

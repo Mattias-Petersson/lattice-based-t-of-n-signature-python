@@ -51,7 +51,7 @@ class BDLOPZK:
         dr = self.PH.polymul(d, r)
         z = self.PH.add(y, dr)
         print("A1 * z", self.PH.matmul(self.CS.A1, z))
-        return (z, t, d)
+        return (y, z, t, d)
 
     def checkProofOfOpening(self, A1, z, t, d, c):
         for poly in z:
@@ -84,9 +84,9 @@ def main():
     for _ in range(1):
         c, r = commit(CommScheme)
         A1 = CommScheme.A1
-        proof = ZK.proofOfOpening(r)
+        _, *proof = ZK.proofOfOpening(r)
         print("c1: ", [c[0]])
-        didProve = ZK.checkProofOfOpening(A1, *proof, c)
+        didProve = ZK.checkProofOfOpening(A1, *proof, c=c)
         proofs[didProve] = proofs.get(didProve, 0) + 1
     print(proofs)
 
