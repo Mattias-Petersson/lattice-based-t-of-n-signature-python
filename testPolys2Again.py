@@ -2,7 +2,7 @@ import math
 from numpy.polynomial import Polynomial as pol
 from numpy.polynomial import polynomial as polMath
 import numpy as np
-from PolyHelper import PolyHelper
+from utils.PolyHelper import PolyHelper
 import numpy.linalg as lin
 
 

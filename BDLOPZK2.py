@@ -2,9 +2,9 @@ import math
 from Distributions import sampleGaussian
 from testPolys2Again import CommitmentScheme
 import numpy as np
-from PolyHelper import PolyHelper
-import numpy.linalg as lin
+from utils.PolyHelper import PolyHelper
 from numpy.polynomial import Polynomial as pol
+import numpy.linalg as lin
 
 
 class BDLOPZK:
@@ -19,13 +19,14 @@ class BDLOPZK:
         dr = self.PH.polymul(d, r)
         rd = self.PH.polymul(r, d)
         c1 = self.PH.matmul(A1, r)
-        print("dc1 = a1dr = ", np.array_equal(self.PH.polymul(d, c1), self.PH.matmul(A1, dr)))
+        print("dc1 = a1dr = ", np.array_equal(
+            self.PH.polymul(d, c1), self.PH.matmul(A1, dr)))
         print("rd = dr", np.array_equal(dr, rd))
         t = self.PH.matmul(A1, y)
         lhs1 = self.PH.matmul(A1, self.PH.add(y, dr))
         rhs1 = self.PH.polymul(d, self.PH.matmul(A1, r))
-        #print("A_1*dr = A_1*rd", np.array_equal(lhs1, rhs1))
-        #lhs2 = self.PH.add(t, lhs1)
+        # print("A_1*dr = A_1*rd", np.array_equal(lhs1, rhs1))
+        # lhs2 = self.PH.add(t, lhs1)
         rhs2 = self.PH.add(t, rhs1)
         print(lhs1)
         print(rhs2)
@@ -33,7 +34,8 @@ class BDLOPZK:
 
     def proofOfOpening(self, r):
         tempy = sampleGaussian(self.CS.k, self.CS.N, self.CS.sigma, self.CS.q)
-        y = np.array([pol(np.zeros(self.CS.N)), pol(np.zeros(self.CS.N)), pol(np.zeros(self.CS.N))])
+        y = np.array([pol(np.zeros(self.CS.N)), pol(
+            np.zeros(self.CS.N)), pol(np.zeros(self.CS.N))])
         for i in range(len(tempy)):
             y[i] = pol(tempy[i])
         t = self.PH.matmul(self.CS.A1, y)
@@ -71,7 +73,7 @@ def main():
     CommScheme = CommitmentScheme()
     ZK = BDLOPZK(CommScheme)
     proofs = dict()
-    for _ in range(100):
+    for _ in range(1):
         c, r = commit(CommScheme)
         A1 = CommScheme.A1
         proof = ZK.proofOfOpening(r)
