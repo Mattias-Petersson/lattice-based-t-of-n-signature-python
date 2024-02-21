@@ -1,3 +1,4 @@
+import copy
 import math
 from Distributions import sampleGaussian
 from testPolys2Again import CommitmentScheme
@@ -43,11 +44,12 @@ class BDLOPZK:
         self.testEquivalences(y, d, r)
         dr = self.PH.polymul(d, r)
         z = self.PH.add(y, dr)
+        print("A1 * z", self.PH.matmul(self.CS.A1, z))
         return (z, t, d)
 
     def checkProofOfOpening(self, A1, z, t, d, c):
         for poly in z:
-            coef = poly.coef
+            coef = copy.deepcopy(poly.coef)
             for i in range(len(coef)):
                 if coef[i] > (self.CS.q-1)/2:
                     coef[i] = self.CS.q - coef[i]
