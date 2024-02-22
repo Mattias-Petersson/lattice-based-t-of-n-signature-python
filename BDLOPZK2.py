@@ -1,11 +1,8 @@
-import copy
-import math
 from Distributions import sampleGaussian
 from testPolys2Again import CommitmentScheme
 import numpy as np
 from utils.PolyHelper import PolyHelper
 from numpy.polynomial import Polynomial as pol
-import numpy.linalg as lin
 
 
 class BDLOPZK:
@@ -14,66 +11,35 @@ class BDLOPZK:
         self.CS = CommScheme
         self.PH = PolyHelper(self.CS.N, self.CS.q)
 
-    def testEquivalences(self, y, d, r):
-        print()
-        A1 = self.CS.A1
-        dr = self.PH.polymul(d, r)
-        rd = self.PH.polymul(r, d)
-        c1 = self.PH.matmul(A1, r)
-        print("a1*r: ", c1)
-        dc1 = self.PH.polymul(d, c1)
-        a1dr = self.PH.matmul(A1, dr)
-        print(dc1)
-        print(a1dr)
-        print("dc1 = a1dr = ", np.array_equal(
-            dc1, a1dr))
-        print("rd = dr", np.array_equal(dr, rd))
-        t = self.PH.matmul(A1, y)
-        print("T: ", t)
-        lhs1 = self.PH.matmul(A1, self.PH.add(y, dr))
-        rhs1 = self.PH.polymul(d, c1)
-        # print("A_1*dr = A_1*rd", np.array_equal(lhs1, rhs1))
-        # lhs2 = self.PH.add(t, lhs1)
-        rhs2 = self.PH.add(t, rhs1)
-        print(lhs1)
-        print(rhs2)
-        print("lhs = rhs", np.array_equal(lhs1, rhs2))
+    def __make_y(self):
+        distributions = sampleGaussian(3, self.CS.N, self.CS.sigma, self.CS.q)
+        return np.array([pol(distributions[i]) for i in range(self.CS.k)])
 
     def proofOfOpening(self, r):
-        tempy = sampleGaussian(self.CS.k, self.CS.N, self.CS.sigma, self.CS.q)
-        y = np.array([pol(np.zeros(self.CS.N)), pol(
-            np.zeros(self.CS.N)), pol(np.zeros(self.CS.N))])
-        for i in range(len(tempy)):
-            y[i] = pol(tempy[i])
-        t = self.PH.matmul(self.CS.A1, y)
-        d = self.CS.getChallenge()
-        self.testEquivalences(y, d, r)
-        dr = self.PH.polymul(d, r)
-        z = self.PH.add(y, dr)
-        print("A1 * z", self.PH.matmul(self.CS.A1, z))
+        y = self.__make_y()
+        # TODO: Solve for too big t. (10^18 at least.)
+        t = np.matmul(self.CS.A1, y)
+        if np.linalg.norm(t[0].coef, np.inf) > (10**16):
+            raise Exception(
+                "Too big of a norm, this will cause loss of precision and might",
+                " lead to erronous behavior.")
+        d = self.CS.get_challenge()
+        z = np.add(y, d * r)
+
         return (y, z, t, d)
 
-    def checkProofOfOpening(self, A1, z, t, d, c):
-        for poly in z:
-            coef = copy.deepcopy(poly.coef)
-            for i in range(len(coef)):
-                if coef[i] > (self.CS.q-1)/2:
-                    coef[i] = self.CS.q - coef[i]
-            print("Within bounds:", lin.norm(coef, 2) <= (
-                2 * self.CS.sigma * math.sqrt(self.CS.N)))
-        lhs = self.PH.matmul(A1, z)
-        dc1 = self.PH.polymul(d, c[0])
-        rhs = self.PH.add(t, dc1)
-        print(lhs)
-        print(rhs)
+    def checkProofOfOpening(self, z, t, d, c, r):
+        lhs = np.matmul(self.CS.A1, z)
+        dc1 = d * c
+        rhs = np.add(t, dc1)
         return np.array_equal(lhs, rhs)
 
 
-def commit(C: CommitmentScheme):
-    m = np.array([C.PH.elementFromRq() for _ in range(C.l)])
-    r = C.getRCommit()
+def commit(C: CommitmentScheme, m: np.ndarray):
+    r = C.get_r_commit()
     c = C.commit(m, r)
-    print("Successfully opens with f=1: {}".format(C.open(c, m, r, pol([1]))))
+    f = C.honest_f()
+    print("Successfully opens with f=1: {}".format(C.open(c, m, r, f)))
     return c, r
 
 
@@ -82,11 +48,10 @@ def main():
     ZK = BDLOPZK(CommScheme)
     proofs = dict()
     for _ in range(1):
-        c, r = commit(CommScheme)
-        A1 = CommScheme.A1
-        _, *proof = ZK.proofOfOpening(r)
-        print("c1: ", [c[0]])
-        didProve = ZK.checkProofOfOpening(A1, *proof, c=c)
+        m = ZK.PH.array_Rq(CommScheme.l)
+        c, r = commit(CommScheme, m)
+        y, *proof = ZK.proofOfOpening(r)
+        didProve = ZK.checkProofOfOpening(*proof, c=c, r=r)
         proofs[didProve] = proofs.get(didProve, 0) + 1
     print(proofs)
 

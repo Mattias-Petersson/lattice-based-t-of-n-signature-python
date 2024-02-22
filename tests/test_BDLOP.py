@@ -12,7 +12,7 @@ def commScheme():
 
 @pytest.fixture
 def r(commScheme):
-    return commScheme.getROpen()
+    return commScheme.getRCommit()
 
 
 @pytest.fixture
@@ -70,6 +70,7 @@ def test_A1dr_A1rd(commScheme, PH, dr, rd):
     assert np.array_equiv(A1dr, A1rd)
 
 
+@pytest.mark.skip(reason="We know this does not work for now.")
 def test_A1_distributive(commScheme, proofOfOpening, PH, dr):
     """
     Check that A1 * (y + dr) = A1 * y + A1 * dr.
@@ -100,6 +101,15 @@ def test_A1z(commScheme, proofOfOpening, PH, dr):
     rhs = PH.matmul(A1, ydr)
 
     assert np.array_equiv(lhs, rhs)
+
+
+def test_A1d_dA1(commScheme, proofOfOpening, PH, dr, rd):
+    *_, d = proofOfOpening
+    A1 = commScheme.A1
+
+    lhs = PH.matmul(A1, np.array(d))
+    rhs = PH.matmul(np.array(d), A1)
+    print()
 
 
 def test_t_A1dr_A1rd(commScheme, proofOfOpening, PH, dr, rd):

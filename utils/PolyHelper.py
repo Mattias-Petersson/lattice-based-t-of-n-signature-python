@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.polynomial import Polynomial as pol
 from numpy.polynomial import polynomial as polMath
+import math
 
 
 class PolyHelper:
@@ -18,86 +19,45 @@ class PolyHelper:
     def __init__(self, N: int, q: int):
         self.N, self.q = N, q
 
-    def basisPoly(self) -> pol:
-        fx = np.zeros(self.N + 1)
-        fx[[0, -1]] = 1
-        return pol(fx)
-
-    def elementFromRq(self) -> pol:
-        randomizedCoeffs = np.random.randint(self.q, size=self.N)
+    def __element_from_Rq(self) -> pol:
+        bound = (self.q - 1) // 2
+        randomizedCoeffs = np.random.randint(
+            low=-bound, high=bound, size=self.N)
         return pol(randomizedCoeffs)
 
-    def boundedElement(self, bound: int) -> pol:
-        return pol(np.random.randint(bound, size=self.N))
+    def basis_poly(self) -> np.ndarray:
+        fx = np.zeros(self.N + 1)
+        fx[[0, -1]] = 1
+        return np.array([pol(fx)])
 
-    def boundedArray(self, n: int, bound: int) -> np.ndarray:
-        return np.array([self.boundedElement(bound) for _ in range(n)])
+    def bounded_element(self, bound: int) -> pol:
+        bound = (bound - 1) // 2 if bound % 2 == 1 else bound // 2
+        return pol(np.random.randint(low=-bound, high=bound, size=self.N))
 
-    def sBeta(self, l_inf: int) -> pol:
+    def bounded_array(self, n: int, bound: int) -> np.ndarray:
+        return np.array([self.bounded_element(bound) for _ in range(n)])
+
+    def get_sbeta(self, l_inf: int) -> pol:
         return pol(np.random.randint(l_inf + 1, size=self.N))
 
-    def arrayRq(self, n: int | tuple[int, int]) -> np.ndarray:
+    def array_Rq(self, n: int | tuple[int, int]) -> np.ndarray:
         def rqVector(n): return np.array(
-            [self.elementFromRq() for _ in range(n)])
+            [self.__element_from_Rq() for _ in range(n)])
         if isinstance(n, int):
             return rqVector(n)
         i, j = n
         return np.array([rqVector(j) for _ in range(i)])
 
-    def _helper(self, n: pol) -> pol:
-        basis = self.basisPoly()
-        nCopy = pol.copy(n)
+    def modulo(self, n: np.ndarray) -> np.ndarray:
+        basis = self.basis_poly()
+        nCopy = np.copy(n)
         nCopy = nCopy % basis
-        nCopy = pol([i % self.q for i in nCopy])
-        return nCopy
+        return np.array(nCopy)
 
-    def _reduceRes(self, n: np.ndarray | pol) -> np.ndarray:
-        if isinstance(n, pol):
-            return np.array(self._helper(n))
-        reducedn = np.copy(n)
-        if reducedn.ndim == 1:
-            return np.array([self._helper(i) for i in reducedn])
-        else:
-            return np.array([[self._helper(j) for j in i]for i in reducedn])
+    def compare_reduced(self, n: np.ndarray, m: np.ndarray) -> bool:
+        return np.array_equal(self.modulo(n), self.modulo(m))
 
-    def add(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        sum = polMath.polyadd(p1, p2)
-        for i in sum:
-            i.coef = i.coef % self.q
-        return sum
 
-    def polymul(self, v1: pol, v2: pol | np.ndarray) -> np.ndarray:
-        prod = polMath.polymul(v1, v2)
-        res = self._reduceRes(prod)
-        return res
-
-    def matmul(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """
-        Wrapper for numpy's matmul for matrices, with an additional call to
-        reduce the coefficients mod q, and the polynomial degree mod X^N+1.
-        """
-        res = np.matmul(p1, p2)
-        x = self._reduceRes(res)
-        return x
-        """
-        if p1.ndim == 1:
-            p1 = p1.reshape((1, len(p1)))
-        if p2.ndim == 1:
-            p2 = p2.reshape((len(p2), 1))
-        if len(p1[0]) != len(p2):
-            raise ValueError()
-        res = []
-        for i in range(len(p1)):
-            innerRes = []
-            for j in range(len(p2[0])):
-                sum = pol(np.zeros(self.N))
-                for k in range(len(p1[0])):
-                    sum = polMath.polyadd(sum, self.polymul(p1[i][k], p2[k][j]))[0]
-                innerRes.append(sum)
-            res.append(innerRes)
-        if len(res[0]) == 1:
-            tempres = []
-            for i in range(len(res)):
-                tempres.append(res[i][0])
-            res = tempres
-        return np.array(res)"""
+if __name__ == "__main__":
+    PH = PolyHelper(2, 2)
+    PH.basis_poly()
