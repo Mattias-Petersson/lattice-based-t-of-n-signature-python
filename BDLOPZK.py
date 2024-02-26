@@ -1,6 +1,6 @@
 import math
 import re
-from CommitmentSchemeCypari import CommitmentScheme
+from CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
 import cypari2
 
