@@ -1,151 +1,134 @@
 import math
+import time
+import cypari2
 import numpy as np
-from Distributions import sampleUniform
-import numpy.linalg as lin
+import random
+from utils.Polynomial import Polynomial
 
 
 class CommitmentScheme:
-    """
-    A basic commitment scheme. q is chosen such that q = 2d + 1 mod (4d), 
-    with d = 8. q is also set to be a prime approximately equal to 2^32.
-    All params are over R_q. 
+    def __init__(
+        self,
+        l: int = 1,
+        k: int = 3,
+        n: int = 1,
+        sbeta: int = 1,
+        kappa: int = 36,
+        q: int = 2**32 - 527,
+        N: int = 1024,
+    ):
+        def __make_A1():
+            A1_prime = self.polynomial.uniform_array((n, k - n))
+            return self.polynomial.concat(self.polynomial.ones(n), A1_prime)
 
-    :param l int: Dimension of the message space.
-    :param k int: Width of the commitment matrices.
-    :param n int: Height of the commitment matrix A1.
-    :param q int: Prime modulus defining R_q. 
-    """
-
-    def __init__(self, l: int = 1, k: int = 3, n: int = 1, q: int = 2 ** 32 - 527):
-        def __makeA1(self):
-            A1prime = sampleUniform((n, k-n), *self.uniformValues)
-            return np.concatenate((np.identity(n), A1prime), axis=1)
-
-        def __makeA2(self):
-            A2prime = sampleUniform((l, k-n-l), *self.uniformValues)
-            return np.concatenate(
-                (np.zeros((l, n)), np.identity(l), A2prime), axis=1)
+        def __make_A2():
+            zeroes = self.polynomial.uniform_array((self.n), 1)
+            zeros_with_identity = self.polynomial.concat(
+                zeroes, self.polynomial.ones(n)
+            )
+            A2_prime = self.polynomial.uniform_array((l, k - n - l))
+            return self.polynomial.concat(zeros_with_identity, A2_prime)
 
         self.l = l
         self.k = k
         self.q = q
         self.n = n
-        self.uniformValues = ((q-1)/2, (q-1)/2, q)
-        self.N = 1024
-        self.kappa = 36
-        self.sigma = math.floor(11 * self.kappa * 1 *
-                                math.sqrt(self.k * self.N))
-        self.A1 = __makeA1(self)
-        self.A2 = __makeA2(self)
-        self.A1A2 = np.concatenate((self.A1, self.A2))
+        self.N = N
+        self.sbeta = sbeta
+        self.kappa = kappa
+        if self.kappa > self.N:
+            raise ValueError(
+                "Kappa needs to be smaller than N to make a valid challenge."
+            )
+        self.sigma = math.floor(
+            11 * self.kappa * 1 * math.sqrt(self.k * self.N)
+        )
+        self.polynomial = Polynomial(self.N, self.q)
+        self.cypari = cypari2.Pari()
+        self.A1 = __make_A1()
+        self.A2 = __make_A2()
+        self.A1A2 = self.polynomial.concat(self.A1, self.A2, axis=1)
 
-    def __str__(self):
-        return "A: " + str(self.A1A2)
+    def __a_with_message(self, x, r):
+        """
+        Returns A * r as well as a zero vector concatenated with the message
+        that was sent in.
+        With r bounded by S_b = 1 we do not need to reduce, but r_open allows
+        for a less strict r.
+        """
+        Ar = self.cypari.Mat(self.A1A2 * self.cypari.mattranspose(r))
+        zeroes = self.polynomial.uniform_array(self.n, 1)
+        zeroes_message = self.polynomial.concat(zeroes, x, axis=1)
+        zeroes = self.cypari.Vec(zeroes_message)
+        return Ar, zeroes_message
 
-    def getRCommit(self) -> np.ndarray:
-        """
-        Generate a random polynomial vector bounded by S_{beta} of length k.
-        """
-        r = np.random.randint(-1, 2, size=self.k)
-        while lin.norm(r, np.inf) == 0:  # In case we get an all zero vector.
-            r = np.random.randint(-1, 2, size=self.k)
+    def r_commit(self) -> list:
+        return self.polynomial.uniform_bounded_array(self.k, self.sbeta + 1)
+
+    def r_open(self) -> list:
+        bound = math.floor(4 * self.sigma * math.sqrt(self.N))
+        r = []
+        while len(r) < 3:
+            temp_r = np.random.randint(bound, size=self.N)
+            if self.polynomial.l2_norm(temp_r) < bound:
+                r.append(self.cypari.Pol(temp_r))
         return r
 
-    def getROpen(self) -> np.ndarray:
-        bound = math.floor(4 * self.sigma * math.sqrt(self.N))
-        r = np.random.randint(-bound, bound, size=self.k)
-        while (lin.norm(r, 2) <= bound or lin.norm(r, 2) == 0):
-            r = np.random.randint(-bound, bound, size=self.k)
-        return np.reshape(r, (self.k, 1))
-
-    def getF(self):
-        c1 = self.__getChallenge()
-        c2 = self.__getChallenge()
-        while (np.array_equal(c1, c2)):
-            c1 = self.__getChallenge()
-        cDiff = np.subtract(c1, c2)
-        print("C is invertible in R_q:", lin.norm(cDiff, np.inf) <= 2)
-        return cDiff
-
-    def __getChallenge(self):
+    def get_challenge(self):
         """
-        We need a challenge in the ring R_q, with an l_inf norm of 1, 
-        and a l_1 norm of kappa.
+        Provides a challenge in the ring R_q with an l_inf norm of 1.
+        Additionally it has a l_1 norm of kappa and is small in relation
+        to N.
         """
-        remainingOnes = self.kappa
-        c = np.zeros(self.kappa * 2)
-        while (remainingOnes > 0):
-            idx = np.random.randint(len(c))
-            if (c[idx]) == 0:
-                c[idx] = np.random.choice([-1, 1])
-                remainingOnes -= 1
-        return c
+        bound = self.N // 4
+        indices = sorted(random.sample(range(bound), self.kappa), reverse=True)
+        pol = [f"x^{i}" + random.choice([" + ", " - "]) for i in indices]
+        pol = "".join(pol)[:-3]
+        return self.polynomial.in_rq(self.cypari.Pol(pol))
 
-    def commit(self, x, r):
-        Ar = np.matmul(self.A1A2, r) % self.q
-        zerox = np.concatenate((np.zeros(self.n), x))
-        return np.add(Ar, zerox) % self.q
+    def honest_func(self):
+        return self.cypari.Pol("1")
 
-    def open(self, C, r, x, f):
+    def func_open(self) -> list:
         """
-        f * C = A1A2 * r + F * ZeroX
+        f is a polynomial consisting of the difference of two small challenges.
+        This will guaranteed have an l_2 norm of at most 2.
         """
-        lhs = f * C % self.q
+        c1: cypari2.Gen = self.get_challenge()
+        c2: cypari2.Gen = self.get_challenge()
+        if self.cypari(c1 == c2):
+            c1 = self.get_challenge()
+        return self.cypari(c2 - c1)
 
-        Ar = np.matmul(self.A1A2, r) % self.q
-        zerox = np.concatenate((np.zeros(self.n), x))
-        fz = f * zerox
-        rhs = np.add(Ar, fz) % self.q
+    def commit(self, x: list, r: list) -> list:
+        Ar, zerox = self.__a_with_message(x, r)
+        return self.cypari(Ar + zerox)
 
-        return np.array_equal(lhs, rhs)
+    def open(self, commit, message, randomness, fun) -> bool:
+        Ar, zerox = self.__a_with_message(message, randomness)
+        fz = fun * zerox
 
-    def open2(self, C, r, x, f):
-        c1c2 = np.reshape(C, (2, 1))
-        lhs = f * c1c2 % self.q
-        c1f = np.dot(C[0], f) % self.q
-        Ar = np.matmul(self.A1A2, r) % self.q
-
-        print("A1r:", Ar[0], "\n c1f:", c1f)
-        print(Ar[0] == c1f)
-        zerox = np.reshape(np.concatenate((np.zeros(self.n), x)), (2, 1))
-        fZerox = f * zerox
-        # rhs = np.add(Ar, fZerox) % self.q
-        # print("LHS: ", lhs % self.q, lhs.shape)
-        # print("RHS:", rhs % self.q, rhs.shape)
-        # return np.array_equal(lhs % self.q, rhs % self.q)
-        # lhs = np.matmul(f, np.reshape(C, (2, 1))) % self.q
-
-
-def works():
-    """
-    Also, if an (honest) committer would like to simply open the commitment (without
-    giving a zero-knowledge proof), he can simply output the r, x from (7) and f = 1.
-    """
-    m = np.random.randint(C.q, size=C.l)
-    rCommit = C.getRCommit()
-    rOpen = C.getROpen()
-    randomR = [rCommit, rOpen]
-    idx = np.random.randint(2)
-    c2 = C.commit(m, randomR[idx])
-    print(c2)
-    open = C.open(c2, randomR[idx], m, [1])
-    return open
-
-
-def doesntWork():
-    m = np.random.randint(C.q, size=C.l)
-    rCommit = C.getRCommit()
-    rOpen = C.getROpen()
-    c2 = C.commit(m, rCommit)
-    open = C.open(c2, rCommit, m, C.getF())
-    return open
+        rhs = self.cypari(Ar + fz)
+        lhs = self.cypari(fun * commit)
+        return bool(self.cypari(lhs == rhs))
 
 
 if __name__ == "__main__":
-    C = CommitmentScheme()
-    counts = dict()
-    for _ in range(100):
-        # open = doesntWork()
-        open = works()
-        counts[open] = counts.get(open, 0) + 1
-    print(counts)
+    start = time.time()
+    comm = CommitmentScheme()
+    cypa = Polynomial()
+    print(
+        "Time to make a commitment scheme and a polynomial class: %s seconds"
+        % (round(time.time() - start, 4))
+    )
+
+    open = dict()
+    for i in range(10):
+        message = cypa.uniform_array(comm.l)
+        randomness = comm.r_commit()
+        commit = comm.commit(message, randomness)
+        fun = comm.honest_func()
+        opened = comm.open(commit, message, randomness, fun)
+        open[opened] = open.get(opened, 0) + 1
+    print(open)
+    print("Total execution time: %s seconds" % (round(time.time() - start, 4)))
