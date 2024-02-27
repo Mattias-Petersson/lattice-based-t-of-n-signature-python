@@ -1,128 +1,48 @@
 import pytest
-from testPolys2Again import CommitmentScheme
-from BDLOPZK2 import BDLOPZK
-from utils.PolyHelper import PolyHelper
-import numpy as np
+from BDLOPZK import BDLOPZK
 
 
 @pytest.fixture
-def commScheme():
-    return CommitmentScheme()
+def r_commit(comm_scheme):
+    return comm_scheme.r_commit()
 
 
 @pytest.fixture
-def r(commScheme):
-    return commScheme.getRCommit()
+def r_open(comm_scheme):
+    return comm_scheme.r_open()
 
 
 @pytest.fixture
-def ZK(commScheme):
-    return BDLOPZK(commScheme)
+def ZK(comm_scheme):
+    return BDLOPZK(comm_scheme)
 
 
-@pytest.fixture
-def PH(commScheme):
-    return PolyHelper(commScheme.N, commScheme.q)
-
-
-@pytest.fixture(autouse=True)
-def proofOfOpening(ZK, r):
-    return ZK.proofOfOpening(r)
-
-
-@pytest.fixture
-def dr(r, PH,  proofOfOpening):
-    *_, d = proofOfOpening
-    return PH.polymul(d, r)
-
-
-@pytest.fixture
-def rd(r, PH, proofOfOpening):
-    *_, d = proofOfOpening
-    return PH.polymul(d, r)
-
-
-def test_z(PH, proofOfOpening, dr):
+def test_proof_of_opening(ZK, commit):
     """
-    Verify that z is equal to y + dr.
+    A proof of opening should not throw an exception
+    with an r from a commitment scheme.
     """
-    y, z, *_ = proofOfOpening
-    ydr = PH.add(y, dr)
-    assert np.array_equiv(ydr, z)
+    _, r = commit
+    try:
+        ZK.proof_of_opening(r)
+    except Exception as e:
+        pytest.fail("Unhandled exception: {}".format(e))
 
 
-def test_dr_rd(dr, rd):
+def test_verification(ZK, commit):
     """
-    Confirms that multiplication is commutative.
+    Verify that a proof of opening returns True for a valid r.
     """
-    assert np.array_equiv(dr, rd)
+    c, r = commit
+    proof = ZK.proof_of_opening(r)
+    assert ZK.verify_proof_of_opening(c[0][0], *proof)
 
 
-def test_A1dr_A1rd(commScheme, PH, dr, rd):
+def test_verification_false(ZK, commit, r_open):
     """
-    Confirm that A1 * dr = A1 * rd. If dr = rd
-    this should always hold. 
+    Verify that a proof of opening returns False when sending in a
+    different r.
     """
-    A1 = commScheme.A1
-
-    A1dr = PH.matmul(A1, dr)
-    A1rd = PH.matmul(A1, rd)
-    assert np.array_equiv(A1dr, A1rd)
-
-
-@pytest.mark.skip(reason="We know this does not work for now.")
-def test_A1_distributive(commScheme, proofOfOpening, PH, dr):
-    """
-    Check that A1 * (y + dr) = A1 * y + A1 * dr.
-    """
-    A1 = commScheme.A1
-    y, *_ = proofOfOpening
-
-    ydr = PH.add(y, dr)
-    lhs = PH.matmul(A1, ydr)
-
-    A1y = PH.matmul(A1, y)
-    A1dr = PH.matmul(A1, dr)
-    rhs = PH.add(A1y, A1dr)
-
-    assert np.array_equiv(lhs, rhs)
-
-
-def test_A1z(commScheme, proofOfOpening, PH, dr):
-    """
-    Check that A1 * z = A1 * (y + dr)
-    """
-    A1 = commScheme.A1
-    y, z, *_ = proofOfOpening
-
-    lhs = PH.matmul(A1, z)
-
-    ydr = PH.add(y, dr)
-    rhs = PH.matmul(A1, ydr)
-
-    assert np.array_equiv(lhs, rhs)
-
-
-def test_A1d_dA1(commScheme, proofOfOpening, PH, dr, rd):
-    *_, d = proofOfOpening
-    A1 = commScheme.A1
-
-    lhs = PH.matmul(A1, np.array(d))
-    rhs = PH.matmul(np.array(d), A1)
-    print()
-
-
-def test_t_A1dr_A1rd(commScheme, proofOfOpening, PH, dr, rd):
-    """
-    t + A1dr = t + A1rd should hold, with rd = dr
-    """
-    A1 = commScheme.A1
-    *_, t, _ = proofOfOpening
-
-    A1dr = PH.matmul(A1, dr)
-    lhs = PH.add(t, A1dr)
-
-    A1rd = PH.matmul(A1, rd)
-    rhs = PH.add(t, A1rd)
-
-    assert np.array_equiv(lhs, rhs)
+    c, _ = commit
+    proof = ZK.proof_of_opening(r_open)
+    assert not ZK.verify_proof_of_opening(c[0][0], *proof)

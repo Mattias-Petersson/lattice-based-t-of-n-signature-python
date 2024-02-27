@@ -83,4 +83,4 @@ class Polynomial:
         return math.sqrt(sum([i**2 % self.q for i in list]))
 
     def pol_to_arr(self, pol) -> list[int]:
-        return [int(j) for j in re.findall("(\\d+),", str(pol))]
+        return [int(j) for j in re.findall("Mod\\((\\d+),", str(pol))]
