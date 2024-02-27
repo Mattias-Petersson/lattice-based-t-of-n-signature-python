@@ -1,6 +1,7 @@
 import cypari2
 import numpy as np
 import math
+import re
 
 
 class Polynomial:
@@ -81,6 +82,5 @@ class Polynomial:
     def l2_norm(self, list) -> float:
         return math.sqrt(sum([i**2 % self.q for i in list]))
 
-    def concat(self, arr1, arr2, axis: int = 0):
-        transposed = "~" if axis else ""
-        return self.cyp.matconcat(f"[{arr1}, {arr2}]{transposed}")
+    def pol_to_arr(self, pol) -> list[int]:
+        return [int(j) for j in re.findall("(\\d+),", str(pol))]

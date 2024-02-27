@@ -1,5 +1,4 @@
 import math
-import re
 from CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
 import cypari2
@@ -14,7 +13,7 @@ class BDLOPZK:
     def __verify_z_bound(self, z) -> bool:
         bound = int(4 * self.comm_scheme.sigma * math.sqrt(self.comm_scheme.N))
         for i in z:
-            array_coeffs = [int(j) for j in re.findall("(\\d+),", str(i))]
+            array_coeffs = self.polynomial.pol_to_arr(i)
             if self.polynomial.l2_norm(array_coeffs) >= bound:
                 return False
         return True
@@ -46,8 +45,6 @@ class BDLOPZK:
 def commit(C: CommitmentScheme, m):
     r = C.r_commit()
     c = C.commit(m, r)
-    f = C.honest_func()
-    # print("Successfully opens with f=1: {}".format(C.open(c, m, r, f)))
     return c, r
 
 
@@ -60,7 +57,6 @@ def main():
         c, r = commit(CommScheme, m)
         proof = ZK.proof_of_opening(r)
         open = ZK.verify_proof_of_opening(c[0][0], *proof)
-        print(open)
         proofs[open] = proofs.get(open, 0) + 1
     print(proofs)
 

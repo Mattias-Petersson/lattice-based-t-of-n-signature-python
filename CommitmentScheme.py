@@ -19,15 +19,15 @@ class CommitmentScheme:
     ):
         def __make_A1():
             A1_prime = self.polynomial.uniform_array((n, k - n))
-            return self.polynomial.concat(self.polynomial.ones(n), A1_prime)
+            return self.cypari.concat(self.polynomial.ones(n), A1_prime)
 
         def __make_A2():
             zeroes = self.polynomial.uniform_array((self.n), 1)
-            zeros_with_identity = self.polynomial.concat(
-                zeroes, self.polynomial.ones(n)
+            zeros_with_identity = self.cypari.matconcat(
+                [zeroes, self.polynomial.ones(n)]
             )
             A2_prime = self.polynomial.uniform_array((l, k - n - l))
-            return self.polynomial.concat(zeros_with_identity, A2_prime)
+            return self.cypari.concat(zeros_with_identity, A2_prime)
 
         self.l = l
         self.k = k
@@ -47,7 +47,9 @@ class CommitmentScheme:
         self.cypari = cypari2.Pari()
         self.A1 = __make_A1()
         self.A2 = __make_A2()
-        self.A1A2 = self.polynomial.concat(self.A1, self.A2, axis=1)
+        self.A1A2 = self.cypari.matconcat(
+            self.cypari.mattranspose([self.A1, self.A2])
+        )
 
     def __a_with_message(self, x, r):
         """
@@ -58,7 +60,9 @@ class CommitmentScheme:
         """
         Ar = self.cypari.Mat(self.A1A2 * self.cypari.mattranspose(r))
         zeroes = self.polynomial.uniform_array(self.n, 1)
-        zeroes_message = self.polynomial.concat(zeroes, x, axis=1)
+        zeroes_message = self.cypari.matconcat(
+            self.cypari.mattranspose([zeroes, x])
+        )
         zeroes = self.cypari.Vec(zeroes_message)
         return Ar, zeroes_message
 
