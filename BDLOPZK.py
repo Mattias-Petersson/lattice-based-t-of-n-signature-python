@@ -1,6 +1,7 @@
 import math
 from CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
+import time
 import cypari2
 
 
@@ -72,7 +73,6 @@ class BDLOPZK:
             * (g2 * self.cypari.mattranspose(z1) - g1 * self.cypari.mattranspose(z2))
         )
         rhs3 = self.cypari((g2 * c1[0][1] - g1 * c2[0][1]) * d + u)
-        print(self.cypari(lhs3 == rhs3))
         return bool(
             self.cypari(lhs1 == rhs1)
             and self.cypari(lhs2 == rhs2)
@@ -128,7 +128,6 @@ class BDLOPZK:
             )
         )
         rhs4 = self.cypari((g1 * c1[0][1] + g2 * c2[0][1] - g3 * c3[0][1]) * d + u)
-        print(self.cypari(lhs4 == rhs4))
         return bool(
             self.cypari(lhs1 == rhs1)
             and self.cypari(lhs2 == rhs2)
@@ -148,13 +147,16 @@ def main():
     ZK = BDLOPZK(CommScheme)
     cypari = cypari2.Pari()
     proofs = dict()
+    clock = time.time()
     for _ in range(100):
         m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
         c, r = commit(CommScheme, m)
         proof = ZK.proof_of_opening(r)
         open = ZK.verify_proof_of_opening(c[0][0], *proof)
         proofs[open] = proofs.get(open, 0) + 1
-    for _ in range(10):
+    print("Opening time: ", time.time() - clock)
+    clock = time.time()
+    for _ in range(100):
         m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
         g1 = CommScheme.get_challenge()
         g2 = CommScheme.get_challenge()
@@ -163,7 +165,9 @@ def main():
         proof = ZK.proof_of_linear_relation(r1, r2, g1, g2)
         open = ZK.verify_proof_of_linear_relation(*proof, c1, c2, g1, g2)
         proofs[open] = proofs.get(open, 0) + 1
-    for _ in range(10):
+    print("Linear Relation time: ", time.time() - clock)
+    clock = time.time()
+    for _ in range(100):
         m1 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
         m2 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
         g1 = CommScheme.get_challenge()
@@ -175,6 +179,8 @@ def main():
         proof = ZK.proof_of_sum(r1, r2, r3, g1=g1, g2=g2, g3=g3)
         open = ZK.verify_proof_of_sum(*proof, c1, c2, c3, g1, g2, g3)
         proofs[open] = proofs.get(open, 0) + 1
+    print("Sum time: ", time.time() - clock)
+    clock = time.time()
     print(proofs)
 
 
