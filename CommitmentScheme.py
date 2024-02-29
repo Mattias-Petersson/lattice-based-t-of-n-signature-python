@@ -24,7 +24,7 @@ class CommitmentScheme:
         def __make_A2():
             zeroes = self.polynomial.uniform_array((self.n), 1)
             zeros_with_identity = self.cypari.matconcat(
-                [zeroes, self.polynomial.ones(n)]
+                [zeroes, self.polynomial.ones(l)]
             )
             A2_prime = self.polynomial.uniform_array((l, k - n - l))
             return self.cypari.concat(zeros_with_identity, A2_prime)
@@ -104,7 +104,7 @@ class CommitmentScheme:
             c1 = self.get_challenge()
         return self.cypari(c2 - c1)
 
-    def commit(self, x: list, r: list) -> list:
+    def commit(self, x: list, r: list) -> list[cypari2.gen.Gen]:
         Ar, zerox = self.__a_with_message(x, r)
         return self.cypari(Ar + zerox)
 
@@ -120,15 +120,14 @@ class CommitmentScheme:
 if __name__ == "__main__":
     start = time.time()
     comm = CommitmentScheme()
-    cypa = Polynomial()
+    polynomial = Polynomial()
     print(
         "Time to make a commitment scheme and a polynomial class: %s seconds"
         % (round(time.time() - start, 4))
     )
-
     open = dict()
-    for i in range(10):
-        message = cypa.uniform_array(comm.l)
+    for i in range(1):
+        message = polynomial.uniform_array(comm.l)
         randomness = comm.r_commit()
         commit = comm.commit(message, randomness)
         fun = comm.honest_func()
