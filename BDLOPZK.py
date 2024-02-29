@@ -1,5 +1,6 @@
 import math
 from CommitmentScheme import CommitmentScheme
+from type.classes import Commit, ProofOfOpen, ProofOfOpenLinear
 from utils.Polynomial import Polynomial
 import time
 import cypari2
@@ -28,33 +29,41 @@ class BDLOPZK:
         # TODO: This d should be a hash in order to be a Sigma protocol.
         return self.comm_scheme.get_challenge()
 
-    def __verify_A1_z(self, z, t, d, c):
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(z))
-        rhs = self.cypari(t + (d * c))
+    def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
+        rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
-    def proof_of_opening(self, r):
+    def proof_of_opening(self, r) -> tuple[ProofOfOpen, cypari2.gen.Gen]:
         y = self.__make_y()
         d = self.__d_sigma()
-        dr = self.cypari(d * r)
         t = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
-        z = self.cypari.Vec(y + dr)
+        z = self.cypari.Vec(y + d * r)
+        return ProofOfOpen(z, t), d
 
-        return z, t, d
-
-    def verify_proof_of_opening(self, c1, z, t, d) -> bool:
-        z_bounded = self.__verify_z_bound(z)
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(z))
+    def verify_proof_of_opening(self, c1, proof: ProofOfOpen, d) -> bool:
+        z_bounded = self.__verify_z_bound(proof.z)
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
 
         dc1 = self.cypari(d * c1)
-        rhs = self.cypari(t + dc1)
+        rhs = self.cypari(proof.t + dc1)
 
         return bool(z_bounded and self.cypari(lhs == rhs))
 
-    def proof_of_linear_relation(self, r1, r2, g1, g2):
+    def __make_proof_open(self, y, d, r) -> ProofOfOpen:
+        t = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
+        z = self.cypari.Vec(y + d * r)
+        return ProofOfOpen(z, t)
+
+    def proof_of_linear_relation(
+        self, r1, r2, g1, g2
+    ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen, cypari2.gen.Gen]:
         y1, y2 = self.__make_y(), self.__make_y()
-        t1 = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y1))
-        t2 = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y2))
+        d = self.__d_sigma()
         u = self.cypari(
             self.comm_scheme.A2
             * (
@@ -62,29 +71,31 @@ class BDLOPZK:
                 - g1 * self.cypari.mattranspose(y2)
             )
         )
-        d = self.__d_sigma()
-        z1 = self.cypari.Vec(y1 + d * r1)
-        z2 = self.cypari.Vec(y2 + d * r2)
-        return (t1, t2, u, z1, z2, d)
+        first_proof = self.__make_proof_open(y1, d, r1)
+        second_proof = self.__make_proof_open(y2, d, r2)
+        return first_proof, second_proof, u, d
 
     def verify_proof_of_linear_relation(
-        self, t1, t2, u, z1, z2, d, c1, c2, g1, g2
-    ):
-        if not (self.__verify_z_bound(z1) and self.__verify_z_bound(z2)):
+        self, proof_one: ProofOfOpenLinear, proof_two: ProofOfOpenLinear, u, d
+    ) -> bool:
+        list_of_proofs = [proof_one, proof_two]
+        if not all([self.__verify_z_bound(i.z) for i in list_of_proofs]):
             return False
-        equivalences = []
-        equivalences.append(self.__verify_A1_z(z1, t1, d, c1[0][0]))
-        equivalences.append(self.__verify_A1_z(z2, t2, d, c2[0][0]))
-        lhs3 = self.cypari(
+        if not all([self.__verify_A1_z(proof, d) for proof in list_of_proofs]):
+            return False
+        lhs = self.cypari(
             self.comm_scheme.A2
             * (
-                g2 * self.cypari.mattranspose(z1)
-                - g1 * self.cypari.mattranspose(z2)
+                proof_two.g * self.cypari.mattranspose(proof_one.z)
+                - proof_one.g * self.cypari.mattranspose(proof_two.z)
             )
         )
-        rhs3 = self.cypari((g2 * c1[0][1] - g1 * c2[0][1]) * d + u)
-        equivalences.append(self.cypari(lhs3 == rhs3))
-        return all(equivalences)
+        rhs = self.cypari(
+            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1])
+            * d
+            + u
+        )
+        return bool(self.cypari(lhs == rhs))
 
     def __make_t(self, y):
         return self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
@@ -119,9 +130,9 @@ class BDLOPZK:
             return False
         equivalences = []
 
-        equivalences.append(self.__verify_A1_z(z1, t1, d, c1[0][0]))
+        """equivalences.append(self.__verify_A1_z(z1, t1, d, c1[0][0]))
         equivalences.append(self.__verify_A1_z(z2, t2, d, c2[0][0]))
-        equivalences.append(self.__verify_A1_z(z3, t3, d, c3[0][0]))
+        equivalences.append(self.__verify_A1_z(z3, t3, d, c3[0][0]))"""
 
         lhs4 = self.cypari(
             self.comm_scheme.A2
@@ -141,7 +152,7 @@ class BDLOPZK:
 
 def commit(C: CommitmentScheme, m):
     r = C.r_commit()
-    c = C.commit(m, r)
+    c = C.commit(Commit(m, r))
     return c, r
 
 
@@ -160,8 +171,10 @@ def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
     g2 = comm_scheme.get_challenge()
     c1, r1 = commit(comm_scheme, cypari(g1 * m))
     c2, r2 = commit(comm_scheme, cypari(g2 * m))
-    proof = ZK.proof_of_linear_relation(r1, r2, g1, g2)
-    open = ZK.verify_proof_of_linear_relation(*proof, c1, c2, g1, g2)
+    first, second, *rest = ZK.proof_of_linear_relation(r1, r2, g1, g2)
+    first = ProofOfOpenLinear(c1, g1, proof=first)
+    second = ProofOfOpenLinear(c2, g2, proof=second)
+    open = ZK.verify_proof_of_linear_relation(first, second, *rest)
     return open
 
 

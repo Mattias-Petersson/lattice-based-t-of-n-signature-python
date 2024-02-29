@@ -4,6 +4,7 @@ import cypari2
 import numpy as np
 import random
 from utils.Polynomial import Polynomial
+from type.classes import Commit, CommitOpen
 
 
 class CommitmentScheme:
@@ -51,17 +52,17 @@ class CommitmentScheme:
             self.cypari.mattranspose([self.A1, self.A2])
         )
 
-    def __a_with_message(self, x, r):
+    def __a_with_message(self, c: Commit):
         """
         Returns A * r as well as a zero vector concatenated with the message
         that was sent in.
         With r bounded by S_b = 1 we do not need to reduce, but r_open allows
         for a less strict r.
         """
-        Ar = self.cypari.Mat(self.A1A2 * self.cypari.mattranspose(r))
+        Ar = self.cypari.Mat(self.A1A2 * self.cypari.mattranspose(c.r))
         zeroes = self.polynomial.uniform_array(self.n, 1)
         zeroes_message = self.cypari.matconcat(
-            self.cypari.mattranspose([zeroes, x])
+            self.cypari.mattranspose([zeroes, c.m])
         )
         zeroes = self.cypari.Vec(zeroes_message)
         return Ar, zeroes_message
@@ -104,16 +105,16 @@ class CommitmentScheme:
             c1 = self.get_challenge()
         return self.cypari(c2 - c1)
 
-    def commit(self, x: list, r: list) -> list[cypari2.gen.Gen]:
-        Ar, zerox = self.__a_with_message(x, r)
+    def commit(self, c: Commit) -> list[cypari2.gen.Gen]:
+        Ar, zerox = self.__a_with_message(c)
         return self.cypari(Ar + zerox)
 
-    def open(self, commit, message, randomness, fun) -> bool:
-        Ar, zerox = self.__a_with_message(message, randomness)
-        fz = fun * zerox
+    def open(self, open: CommitOpen) -> bool:
+        Ar, zerox = self.__a_with_message(open)
+        fz = open.f * zerox
 
         rhs = self.cypari(Ar + fz)
-        lhs = self.cypari(fun * commit)
+        lhs = self.cypari(open.f * open.c)
         return bool(self.cypari(lhs == rhs))
 
 
@@ -121,17 +122,14 @@ if __name__ == "__main__":
     start = time.time()
     comm = CommitmentScheme()
     polynomial = Polynomial()
-    print(
-        "Time to make a commitment scheme and a polynomial class: %s seconds"
-        % (round(time.time() - start, 4))
-    )
     open = dict()
-    for i in range(1):
-        message = polynomial.uniform_array(comm.l)
-        randomness = comm.r_commit()
-        commit = comm.commit(message, randomness)
+    for i in range(100):
+        c: Commit = Commit(
+            m=polynomial.uniform_array(comm.l), r=comm.r_commit()
+        )
+        commit = comm.commit(c)
         fun = comm.honest_func()
-        opened = comm.open(commit, message, randomness, fun)
+        opened = comm.open(CommitOpen(commit, fun, commit=c))
         open[opened] = open.get(opened, 0) + 1
     print(open)
     print("Total execution time: %s seconds" % (round(time.time() - start, 4)))
