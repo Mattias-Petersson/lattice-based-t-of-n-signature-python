@@ -2,6 +2,7 @@ import cypari2
 import numpy as np
 import math
 import re
+from cypari2.convert import gen_to_python
 
 
 class Polynomial:
@@ -43,44 +44,59 @@ class Polynomial:
     def __gaussian_list(self, n: int, sigma: int):
         return [self.__gaussian_element(sigma) for _ in range(n)]
 
-    def in_rq(self, poly) -> list:
+    def in_rq(self, p: cypari2.gen.Gen):
         """
         Returns a polynomial congruent in R_q to the one sent in.
 
         Args:
-        poly: A polynomial from the Cypari class.
+        p: A polynomial or a list of polynomials.
 
         Returns:
         The polynomial that is congruent to the argument for the ring.
         """
         return self.cyp(
-            poly * self.cyp.Mod(1, self.q) * self.cyp.Mod(1, self.basis_poly())
+            p * self.cyp.Mod(1, self.q) * self.cyp.Mod(1, self.basis_poly())
         )
 
     def basis_poly(self) -> cypari2.gen.Gen:
         fx = f"x^{self.N} + 1"
         return self.cyp.Pol(fx)
 
-    def uniform_array(self, n: int | tuple[int, int], bound: int = 0) -> list:
+    def uniform_array(
+        self, n: int | tuple[int, int], bound: int = 0
+    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
         if isinstance(n, int):
-            return self.cyp.vector(n, self.__uniform_list(n, bound))
+            return (
+                self.__uniform_element(bound)
+                if n == 1
+                else self.cyp.vector(n, self.__uniform_list(n, bound))
+            )
         else:
             return self.cyp.matrix(*n, self.__uniform_list(n[0] * n[1], bound))
 
-    def uniform_bounded_array(self, n: int, bound: int):
+    def uniform_bounded_array(
+        self, n: int, bound: int
+    ) -> list[cypari2.gen.Gen]:
         return self.cyp.vector(n, self.__uniform_list(n, bound))
 
-    def gaussian_array(self, n: int | tuple[int, int], sigma: int) -> list:
+    def gaussian_array(
+        self, n: int | tuple[int, int], sigma: int
+    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
         if isinstance(n, int):
-            return self.cyp.vector(n, self.__gaussian_list(n, sigma))
+            return (
+                self.__gaussian_element(sigma)
+                if n == 1
+                else self.cyp.vector(n, self.__gaussian_list(n, sigma))
+            )
         else:
             return self.cyp.matrix(*n, self.__uniform_list(n[0] * n[1], sigma))
 
-    def ones(self, n: int) -> list:
+    def ones(self, n: int) -> list[cypari2.gen.Gen]:
         return self.in_rq(self.cyp.matid(n))
 
     def l2_norm(self, list) -> float:
         return math.sqrt(sum([i**2 % self.q for i in list]))
 
     def pol_to_arr(self, pol) -> list[int]:
-        return [int(j) for j in re.findall("Mod\\((\\d+),", str(pol))]
+        pariVec = self.cyp.Vec(self.cyp.liftall(pol))
+        return gen_to_python(pariVec)

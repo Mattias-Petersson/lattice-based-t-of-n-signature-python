@@ -24,12 +24,9 @@ def challenge(comm_scheme, poly):
     """
     Returns the challenge as an int array.
     """
-    challenge = comm_scheme.get_challenge()
+    challenge = poly.pol_to_arr(comm_scheme.get_challenge())
     return np.array(
-        [
-            i - comm_scheme.q if i == comm_scheme.q - 1 else i
-            for i in poly.pol_to_arr(challenge)
-        ]
+        [i - comm_scheme.q if i == comm_scheme.q - 1 else i for i in challenge]
     )
 
 
