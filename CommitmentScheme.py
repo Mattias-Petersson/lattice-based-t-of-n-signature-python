@@ -45,7 +45,7 @@ class CommitmentScheme:
             11 * self.kappa * 1 * math.sqrt(self.k * self.N)
         )
         self.polynomial = Polynomial(self.N, self.q)
-        self.cypari = cypari2.Pari()
+        self.cypari = self.polynomial.cypari
         self.A1 = __make_A1()
         self.A2 = __make_A2()
         self.A1A2 = self.cypari.matconcat(
@@ -97,7 +97,7 @@ class CommitmentScheme:
     def func_open(self) -> list:
         """
         f is a polynomial consisting of the difference of two small challenges.
-        This will guaranteed have an l_2 norm of at most 2.
+        This will guaranteed have an l_inf norm of at most 2.
         """
         c1: cypari2.Gen = self.get_challenge()
         c2: cypari2.Gen = self.get_challenge()
@@ -121,11 +121,10 @@ class CommitmentScheme:
 if __name__ == "__main__":
     start = time.time()
     comm = CommitmentScheme()
-    polynomial = Polynomial()
     open = dict()
     for i in range(100):
         c: Commit = Commit(
-            m=polynomial.uniform_array(comm.l), r=comm.r_commit()
+            m=comm.polynomial.uniform_array(comm.l), r=comm.r_commit()
         )
         commit = comm.commit(c)
         fun = comm.honest_func()

@@ -1,7 +1,6 @@
 import cypari2
 import numpy as np
 import math
-import re
 from cypari2.convert import gen_to_python
 
 
@@ -13,10 +12,13 @@ class Polynomial:
     to be in the ring (by taking the polynomial mod q and mod f(x)).
     """
 
-    def __init__(self, N: int = 1024, q: int = 2**32 - 527):
-        self.cyp = cypari2.Pari()
-
-        if not self.cyp.isprime(q):
+    def __init__(
+        self,
+        N: int = 1024,
+        q: int = 2**32 - 527,
+    ):
+        self.cypari: cypari2.pari_instance.Pari = cypari2.Pari()
+        if not self.cypari.isprime(q):
             raise ValueError("q needs to be prime.")
         if not math.log2(N).is_integer():
             raise ValueError("N needs to be a power of two.")
@@ -28,14 +30,14 @@ class Polynomial:
         if bound == 0:
             bound = (self.q - 1) // 2
         randomized_coeffs = np.random.randint(bound, size=self.N)
-        return self.in_rq(self.cyp.Pol(randomized_coeffs))
+        return self.in_rq(self.cypari.Pol(randomized_coeffs))
 
     def __gaussian_element(self, sigma: int) -> cypari2.gen.Gen:
         """
         TODO: Verify that this is behaving similar to a Gaussian distribution.
         """
         unrounded = np.random.normal(0, sigma, size=self.N)
-        poly = self.cyp.round(self.cyp.Pol(unrounded))
+        poly = self.cypari.round(self.cypari.Pol(unrounded))
         return self.in_rq(poly)
 
     def __uniform_list(self, n: int, bound: int = 0):
@@ -54,13 +56,15 @@ class Polynomial:
         Returns:
         The polynomial that is congruent to the argument for the ring.
         """
-        return self.cyp(
-            p * self.cyp.Mod(1, self.q) * self.cyp.Mod(1, self.basis_poly())
+        return self.cypari(
+            p
+            * self.cypari.Mod(1, self.q)
+            * self.cypari.Mod(1, self.basis_poly())
         )
 
     def basis_poly(self) -> cypari2.gen.Gen:
         fx = f"x^{self.N} + 1"
-        return self.cyp.Pol(fx)
+        return self.cypari.Pol(fx)
 
     def uniform_array(
         self, n: int | tuple[int, int], bound: int = 0
@@ -69,15 +73,17 @@ class Polynomial:
             return (
                 self.__uniform_element(bound)
                 if n == 1
-                else self.cyp.vector(n, self.__uniform_list(n, bound))
+                else self.cypari.vector(n, self.__uniform_list(n, bound))
             )
         else:
-            return self.cyp.matrix(*n, self.__uniform_list(n[0] * n[1], bound))
+            return self.cypari.matrix(
+                *n, self.__uniform_list(n[0] * n[1], bound)
+            )
 
     def uniform_bounded_array(
         self, n: int, bound: int
     ) -> list[cypari2.gen.Gen]:
-        return self.cyp.vector(n, self.__uniform_list(n, bound))
+        return self.cypari.vector(n, self.__uniform_list(n, bound))
 
     def gaussian_array(
         self, n: int | tuple[int, int], sigma: int
@@ -86,17 +92,19 @@ class Polynomial:
             return (
                 self.__gaussian_element(sigma)
                 if n == 1
-                else self.cyp.vector(n, self.__gaussian_list(n, sigma))
+                else self.cypari.vector(n, self.__gaussian_list(n, sigma))
             )
         else:
-            return self.cyp.matrix(*n, self.__uniform_list(n[0] * n[1], sigma))
+            return self.cypari.matrix(
+                *n, self.__uniform_list(n[0] * n[1], sigma)
+            )
 
     def ones(self, n: int) -> list[cypari2.gen.Gen]:
-        return self.in_rq(self.cyp.matid(n))
+        return self.in_rq(self.cypari.matid(n))
 
     def l2_norm(self, list) -> float:
         return math.sqrt(sum([i**2 % self.q for i in list]))
 
     def pol_to_arr(self, pol) -> list[int]:
-        pariVec = self.cyp.Vec(self.cyp.liftall(pol))
+        pariVec = self.cypari.Vec(self.cypari.liftall(pol))
         return gen_to_python(pariVec)

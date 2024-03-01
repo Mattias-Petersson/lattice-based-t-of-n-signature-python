@@ -1,7 +1,6 @@
 import math
 from CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpen, ProofOfOpenLinear
-from utils.Polynomial import Polynomial
 import time
 import cypari2
 
@@ -9,8 +8,8 @@ import cypari2
 class BDLOPZK:
     def __init__(self, comm_scheme: CommitmentScheme):
         self.comm_scheme = comm_scheme
-        self.polynomial = Polynomial(self.comm_scheme.N, self.comm_scheme.q)
-        self.cypari = cypari2.Pari()
+        self.polynomial = comm_scheme.polynomial
+        self.cypari = self.polynomial.cypari
 
     def __verify_z_bound(self, z) -> bool:
         bound = int(4 * self.comm_scheme.sigma * math.sqrt(self.comm_scheme.N))
@@ -166,7 +165,6 @@ def commit(C: CommitmentScheme, m):
     return c, r
 
 
-# TODO: These should be in tests rather than in loops.
 def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
@@ -211,7 +209,6 @@ def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
 def main():
     comm_scheme = CommitmentScheme()
     ZK = BDLOPZK(comm_scheme)
-    cypari = cypari2.Pari()
     proofs = dict()
     clock = time.time()
     for _ in range(100):
@@ -220,12 +217,12 @@ def main():
     print("Opening time: ", time.time() - clock)
     clock = time.time()
     for _ in range(100):
-        open = linear_relation(comm_scheme, ZK, cypari)
+        open = linear_relation(comm_scheme, ZK, comm_scheme.cypari)
         proofs[open] = proofs.get(open, 0) + 1
     print("Linear Relation time: ", time.time() - clock)
     clock = time.time()
     for _ in range(100):
-        open = proof_of_sum(comm_scheme, ZK, cypari)
+        open = proof_of_sum(comm_scheme, ZK, comm_scheme.cypari)
         proofs[open] = proofs.get(open, 0) + 1
     print("Sum time: ", time.time() - clock)
     clock = time.time()

@@ -1,10 +1,20 @@
 class Commit:
+    """
+    A commit consisting of a message m and a randomness r.
+    """
+
     def __init__(self, m, r):
         self.m = m
         self.r = r
 
 
 class CommitOpen(Commit):
+    """
+    To open a commit, we require a commitment c, a function f, and a commit.
+    The commit can either be supplied by giving r & m direct, or as a Commit
+    type.
+    """
+
     def __init__(self, c, f, m=None, r=None, commit: Commit | None = None):
         if commit is None and m is None and r is None:
             raise ValueError("Either a commit or m & r needs to be supplied.")
