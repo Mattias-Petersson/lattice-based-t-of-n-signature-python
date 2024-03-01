@@ -40,21 +40,21 @@ def test_proof_of_opening_r_open(ZK, r_open):
         pytest.fail("Unhandled exception: {}".format(e))
 
 
-def test_proof_of_open_valid(ZK, commit_object, comm_scheme):
+def test_proof_of_open_valid(ZK, commit):
     """
     Verify that a proof of opening returns True for a valid r.
     """
-    c = comm_scheme.commit(commit_object)
-    proof = ZK.proof_of_opening(commit_object.r)
+    commit, c = commit
+    proof = ZK.proof_of_opening(commit.r)
     assert ZK.verify_proof_of_opening(c[0][0], *proof)
 
 
-def test_proof_of_open_invalid(ZK, comm_scheme, commit_object, r_open):
+def test_proof_of_open_invalid(ZK, commit, r_open):
     """
     Verify that a proof of opening returns False when sending in a
     different r.
     """
-    c = comm_scheme.commit(commit_object)
+    commit, c = commit
     proof = ZK.proof_of_opening(r_open)
     assert not ZK.verify_proof_of_opening(c[0][0], *proof)
 

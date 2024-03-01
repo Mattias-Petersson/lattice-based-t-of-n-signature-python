@@ -16,10 +16,9 @@ def other_f(comm_scheme):
 
 
 @pytest.fixture
-def commit_open_honest(
-    commit_to_message, honest_f, commit_object
-) -> CommitOpen:
-    return CommitOpen(commit_to_message, honest_f, commit=commit_object)
+def commit_open_honest(commit, honest_f) -> CommitOpen:
+    commit, c = commit
+    return CommitOpen(c, honest_f, commit=commit)
 
 
 @pytest.fixture
@@ -62,13 +61,14 @@ def test_func_norm(comm_scheme, poly):
     assert np.linalg.norm(normalized_f, np.inf) <= 2
 
 
-def test_commit_r_open(comm_scheme, commit_object, honest_f):
+def test_commit_r_open(comm_scheme, commit, honest_f):
     """
     A commit with r_open and a honest verifier should work.
     """
-    commit_object.r = comm_scheme.r_open()
-    commit = comm_scheme.commit(commit_object)
-    assert comm_scheme.open(CommitOpen(commit, honest_f, commit=commit_object))
+    commit, _ = commit
+    commit.r = comm_scheme.r_open()
+    c = comm_scheme.commit(commit)
+    assert comm_scheme.open(CommitOpen(c, honest_f, commit=commit))
 
 
 def test_commit_r_commit(comm_scheme, commit_open_honest):
@@ -78,14 +78,12 @@ def test_commit_r_commit(comm_scheme, commit_open_honest):
     assert comm_scheme.open(commit_open_honest)
 
 
-def test_commit_random_f(comm_scheme, other_f, commit_object):
+def test_commit_random_f(comm_scheme, other_f, commit):
     """
     A commit where f is not from an honest verifier should fail.
     """
-    commit = comm_scheme.commit(commit_object)
-    assert not comm_scheme.open(
-        CommitOpen(commit, other_f, commit=commit_object)
-    )
+    commit, c = commit
+    assert not comm_scheme.open(CommitOpen(c, other_f, commit=commit))
 
 
 def test_honest_func(cypari, honest_f):

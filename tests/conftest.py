@@ -22,6 +22,11 @@ def poly(comm_scheme):
 
 
 @pytest.fixture
+def commit(comm_scheme):
+    return comm_scheme.get_commit()
+
+
+@pytest.fixture
 def commit_object(comm_scheme, poly):
     comm: Commit = Commit(
         poly.uniform_array(comm_scheme.l),

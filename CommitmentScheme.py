@@ -117,6 +117,17 @@ class CommitmentScheme:
         lhs = self.cypari(open.f * open.c)
         return bool(self.cypari(lhs == rhs))
 
+    def get_commit(self) -> tuple[Commit, list]:
+        """
+        Helper function to return a Commit with a random m, r as well as
+        c from committing.
+        """
+        commit = Commit(
+            m=self.polynomial.uniform_array(self.l), r=self.r_commit()
+        )
+        c = self.commit(commit)
+        return commit, c
+
 
 if __name__ == "__main__":
     start = time.time()
