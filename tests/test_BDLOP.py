@@ -40,6 +40,26 @@ def test_proof_of_opening_r_open(ZK, r_open):
         pytest.fail("Unhandled exception: {}".format(e))
 
 
+def test_proof_of_specific_opening_r_open(ZK, r_open):
+    """
+    A proof of opening should not throw an exception
+    with an r from a commitment scheme's open.
+    """
+    try:
+        ZK.proof_of_specific_opening(r_open)
+    except Exception as e:
+        pytest.fail("Unhandled exception: {}".format(e))
+
+
+def test_proof_of_specific_open_valid(ZK, commit):
+    """
+    Verify that a proof of opening returns True for a valid r.
+    """
+    commit, c = commit
+    proof = ZK.proof_of_specific_opening(commit.r)
+    assert ZK.verify_proof_of_specific_opening(c[0][0], c[0][1], *proof, commit.m)
+
+
 def test_proof_of_open_valid(ZK, commit):
     """
     Verify that a proof of opening returns True for a valid r.
@@ -64,13 +84,10 @@ def test_proof_of_linear(ZK, comm_scheme, poly, cypari):
     m = poly.uniform_array(comm_scheme.l)
     g = tuple(comm_scheme.get_challenge() for _ in num)
     r = tuple(comm_scheme.r_commit() for _ in num)
-    c = tuple(
-        comm_scheme.commit(Commit(cypari(g * m), r)) for g, r in zip(g, r)
-    )
+    c = tuple(comm_scheme.commit(Commit(cypari(g * m), r)) for g, r in zip(g, r))
     *proofs, u, d = ZK.proof_of_linear_relation(*r, *g)
     proofs = tuple[ProofOfOpenLinear, ProofOfOpenLinear](
-        ProofOfOpenLinear(c, g, proof=proof)
-        for c, g, proof in zip(c, g, proofs)
+        ProofOfOpenLinear(c, g, proof=proof) for c, g, proof in zip(c, g, proofs)
     )
     assert ZK.verify_proof_of_linear_relation(*proofs, u, d)
 

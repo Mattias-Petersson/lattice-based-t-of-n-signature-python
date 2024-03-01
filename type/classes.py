@@ -30,6 +30,11 @@ class ProofOfOpen:
         self.z, self.t = z, t
 
 
+class ProofOfSpecificOpen:
+    def __init__(self, z, t1, t2):
+        self.z, self.t1, self.t2 = z, t1, t2
+
+
 class ProofOfOpenLinear(ProofOfOpen):
     def __init__(self, c, g, z=None, t=None, proof: ProofOfOpen | None = None):
         if proof is None and z is None and t is None:

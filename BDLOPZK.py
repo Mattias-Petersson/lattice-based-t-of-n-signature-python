@@ -1,6 +1,7 @@
 import math
 from CommitmentScheme import CommitmentScheme
-from type.classes import Commit, ProofOfOpen, ProofOfOpenLinear
+from type.classes import Commit, ProofOfOpen, ProofOfSpecificOpen, ProofOfOpenLinear
+from utils.Polynomial import Polynomial
 import time
 import cypari2
 
@@ -23,9 +24,7 @@ class BDLOPZK:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
-        )
+        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
         rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
@@ -58,15 +57,42 @@ class BDLOPZK:
         z = self.cypari.Vec(y + d * r)
         return ProofOfOpen(z, t), d
 
+    def proof_of_specific_opening(
+        self, r
+    ) -> tuple[ProofOfSpecificOpen, cypari2.gen.Gen]:
+        y = self.__make_y()
+        d = self.__d_sigma()
+        t1 = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
+        t2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(y))
+        z = self.cypari.Vec(y + d * r)
+        return ProofOfSpecificOpen(z, t1, t2), d
+
     def verify_proof_of_opening(self, c1, proof: ProofOfOpen, d) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
-        )
+        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
         rhs = self.cypari(proof.t + d * c1)
 
         return bool(self.cypari(lhs == rhs))
+
+    def verify_proof_of_specific_opening(
+        self, c1, c2, proof: ProofOfSpecificOpen, d, m
+    ) -> bool:
+        if not self.__verify_z_bound(proof.z):
+            return False
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        cprime = commit_with_r(self.comm_scheme, m, r0)
+        c1 = c1 - cprime[0][0]
+        c2 = c2 - cprime[0][1]
+        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        rhs = self.cypari(proof.t1 + d * c1)
+        lhs2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(proof.z))
+        rhs2 = self.cypari(proof.t2 + d * c2)
+        return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
 
     def proof_of_linear_relation(
         self, r1, r2, g1, g2
@@ -75,10 +101,7 @@ class BDLOPZK:
         d = self.__d_sigma()
         u = self.cypari(
             self.comm_scheme.A2
-            * (
-                g2 * self.cypari.mattranspose(y1)
-                - g1 * self.cypari.mattranspose(y2)
-            )
+            * (g2 * self.cypari.mattranspose(y1) - g1 * self.cypari.mattranspose(y2))
         )
         first_proof = self.__make_proof_open(y1, d, r1)
         second_proof = self.__make_proof_open(y2, d, r2)
@@ -97,9 +120,7 @@ class BDLOPZK:
             )
         )
         rhs = self.cypari(
-            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1])
-            * d
-            + u
+            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1]) * d + u
         )
         return bool(self.cypari(lhs == rhs))
 
@@ -165,11 +186,24 @@ def commit(C: CommitmentScheme, m):
     return c, r
 
 
+def commit_with_r(C: CommitmentScheme, m, r):
+    c = C.commit(Commit(m, r))
+    return c
+
+
 def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_opening(r)
     open = ZK.verify_proof_of_opening(c[0][0], *proof)
+    return open
+
+
+def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
+    m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
+    c, r = commit(comm_scheme, m)
+    proof = ZK.proof_of_specific_opening(r)
+    open = ZK.verify_proof_of_specific_opening(c[0][0], c[0][1], *proof, m)
     return open
 
 
@@ -215,6 +249,11 @@ def main():
         open = proof_of_open(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Opening time: ", time.time() - clock)
+    clock = time.time()
+    for _ in range(100):
+        open = proof_of_specific_open(comm_scheme, ZK)
+        proofs[open] = proofs.get(open, 0) + 1
+    print("Specific opening time: ", time.time() - clock)
     clock = time.time()
     for _ in range(100):
         open = linear_relation(comm_scheme, ZK, comm_scheme.cypari)
