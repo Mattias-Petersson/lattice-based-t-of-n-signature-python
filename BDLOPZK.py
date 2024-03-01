@@ -94,6 +94,17 @@ class BDLOPZK:
         rhs2 = self.cypari(proof.t2 + d * c2)
         return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
 
+    def verify_proof_of_zero_opening(
+        self, c1, c2, proof: ProofOfSpecificOpen, d
+    ) -> bool:
+        if not self.__verify_z_bound(proof.z):
+            return False
+        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        rhs = self.cypari(proof.t1 + d * c1)
+        lhs2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(proof.z))
+        rhs2 = self.cypari(proof.t2 + d * c2)
+        return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
+
     def proof_of_linear_relation(
         self, r1, r2, g1, g2
     ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen, cypari2.gen.Gen]:
