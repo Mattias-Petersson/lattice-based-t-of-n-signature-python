@@ -1,5 +1,5 @@
 import math
-from CommitmentScheme import CommitmentScheme
+from BDLOP.CommitmentScheme import CommitmentScheme
 from type.classes import (
     Commit,
     ProofOfOpen,

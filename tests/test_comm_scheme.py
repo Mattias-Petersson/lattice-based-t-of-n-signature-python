@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from CommitmentScheme import CommitmentScheme
+from BDLOP.CommitmentScheme import CommitmentScheme
 from type.classes import CommitOpen
 
 
