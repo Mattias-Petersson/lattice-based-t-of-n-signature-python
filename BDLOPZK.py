@@ -1,7 +1,11 @@
 import math
 from CommitmentScheme import CommitmentScheme
-from type.classes import Commit, ProofOfOpen, ProofOfSpecificOpen, ProofOfOpenLinear
-from utils.Polynomial import Polynomial
+from type.classes import (
+    Commit,
+    ProofOfOpen,
+    ProofOfSpecificOpen,
+    ProofOfOpenLinear,
+)
 import time
 import cypari2
 
@@ -24,7 +28,9 @@ class BDLOPZK:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
@@ -46,14 +52,13 @@ class BDLOPZK:
         z = self.cypari.Vec(y + d * r)
         return ProofOfOpen(z, t)
 
-    def __d_sigma(self):
-        # TODO: This d should be a hash in order to be a Sigma protocol.
-        return self.comm_scheme.get_challenge()
+    def __d_sigma(self, *args):
+        return self.polynomial.hash(self.comm_scheme.kappa, *args)
 
     def proof_of_opening(self, r) -> tuple[ProofOfOpen, cypari2.gen.Gen]:
         y = self.__make_y()
-        d = self.__d_sigma()
         t = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
+        d = self.__d_sigma(y, t)
         z = self.cypari.Vec(y + d * r)
         return ProofOfOpen(z, t), d
 
@@ -61,16 +66,18 @@ class BDLOPZK:
         self, r
     ) -> tuple[ProofOfSpecificOpen, cypari2.gen.Gen]:
         y = self.__make_y()
-        d = self.__d_sigma()
         t1 = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
         t2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(y))
+        d = self.__d_sigma(y, t1, t2)
         z = self.cypari.Vec(y + d * r)
         return ProofOfSpecificOpen(z, t1, t2), d
 
     def verify_proof_of_opening(self, c1, proof: ProofOfOpen, d) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t + d * c1)
 
         return bool(self.cypari(lhs == rhs))
@@ -88,9 +95,13 @@ class BDLOPZK:
         cprime = commit_with_r(self.comm_scheme, m, r0)
         c1 = c1 - cprime[0][0]
         c2 = c2 - cprime[0][1]
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t1 + d * c1)
-        lhs2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(proof.z))
+        lhs2 = self.cypari(
+            self.comm_scheme.A2 * self.cypari.mattranspose(proof.z)
+        )
         rhs2 = self.cypari(proof.t2 + d * c2)
         return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
 
@@ -99,9 +110,13 @@ class BDLOPZK:
     ) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t1 + d * c1)
-        lhs2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(proof.z))
+        lhs2 = self.cypari(
+            self.comm_scheme.A2 * self.cypari.mattranspose(proof.z)
+        )
         rhs2 = self.cypari(proof.t2 + d * c2)
         return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
 
@@ -112,7 +127,10 @@ class BDLOPZK:
         d = self.__d_sigma()
         u = self.cypari(
             self.comm_scheme.A2
-            * (g2 * self.cypari.mattranspose(y1) - g1 * self.cypari.mattranspose(y2))
+            * (
+                g2 * self.cypari.mattranspose(y1)
+                - g1 * self.cypari.mattranspose(y2)
+            )
         )
         first_proof = self.__make_proof_open(y1, d, r1)
         second_proof = self.__make_proof_open(y2, d, r2)
@@ -131,7 +149,9 @@ class BDLOPZK:
             )
         )
         rhs = self.cypari(
-            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1]) * d + u
+            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1])
+            * d
+            + u
         )
         return bool(self.cypari(lhs == rhs))
 

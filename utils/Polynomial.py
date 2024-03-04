@@ -1,7 +1,9 @@
 import cypari2
 import numpy as np
+from numpy.random import Generator, PCG64
 import math
 from cypari2.convert import gen_to_python
+import hashlib
 
 
 class Polynomial:
@@ -108,3 +110,33 @@ class Polynomial:
     def pol_to_arr(self, pol) -> list[int]:
         pariVec = self.cypari.Vec(self.cypari.liftall(pol))
         return gen_to_python(pariVec)
+
+    def challenge(
+        self, kappa: int, seed: list[int] | None = None
+    ) -> cypari2.gen.Gen:
+        """
+        Provides a polynomial in the ring R_q with an l_inf norm of one.
+        Additionally, it has a l_1 norm of kappa and should be small in
+        relation to N. We limit the degree of the polynomial to one fourth
+        of N. A seed can be supplied to always produce the same output
+        polynomial, which is useful for mapping a hash to a polynomial.
+        """
+        gen = Generator(PCG64(seed))
+        bound = self.N // 4
+        indices = gen.choice(range(bound), size=kappa, replace=False)
+        coeffs = gen.choice([" + ", " - "], size=kappa)
+        pol = ""
+        for i, j in zip(coeffs, indices):
+            pol += i + f"x^{j}"
+        return self.cypari.Pol(pol)
+
+    def hash(self, kappa: int, *args) -> cypari2.gen.Gen:
+        """
+        Hash an input of an arbitrary number of polynomial arrays, outputting
+        a single polynomial.
+        """
+        h = hashlib.sha256()
+        for i in args:
+            h.update(str.encode(str(i)))
+        integers_hash: list[int] = [i for i in h.digest()]
+        return self.challenge(kappa=kappa, seed=integers_hash)
