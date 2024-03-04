@@ -11,7 +11,6 @@ class RelationProver:
 
     def prove_sk(
         self,
-        bis,
         ps,
         pe,
         psis,
@@ -26,7 +25,7 @@ class RelationProver:
         ]
         proof1 = self.ZK.proof_of_sum(ps, pe, r0, a, p, 1)
         proofs1 = []
-        for i in range(len(bis)):
+        for i in range(len(psis)):
             proofs1.append(self.ZK.proof_of_sum(psis[i], peis[i], r0, a, p, 1))
         proof2 = self.ZK.proof_of_opening(ps)
         proof3 = self.ZK.proof_of_opening(pe)
