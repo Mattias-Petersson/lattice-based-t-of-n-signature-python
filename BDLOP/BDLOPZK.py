@@ -47,113 +47,110 @@ class BDLOPZK:
             self.comm_scheme.k, self.comm_scheme.sigma
         )
 
-    def __make_proof_open(self, y, d, r) -> ProofOfOpen:
-        t = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
-        z = self.cypari.Vec(y + d * r)
-        return ProofOfOpen(z, t)
-
     def __d_sigma(self, *args):
         return self.polynomial.hash(self.comm_scheme.kappa, *args)
 
-    def proof_of_opening(self, r) -> tuple[ProofOfOpen, cypari2.gen.Gen]:
-        y = self.__make_y()
-        t = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
-        d = self.__d_sigma(y, t)
-        z = self.cypari.Vec(y + d * r)
-        return ProofOfOpen(z, t), d
+    def __make_lhs(self, A, vector) -> cypari2.gen.Gen:
+        return self.cypari(A * self.cypari.mattranspose(vector))
 
-    def proof_of_specific_opening(
-        self, r
-    ) -> tuple[ProofOfSpecificOpen, cypari2.gen.Gen]:
-        y = self.__make_y()
-        t1 = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
-        t2 = self.cypari(self.comm_scheme.A2 * self.cypari.mattranspose(y))
-        d = self.__d_sigma(y, t1, t2)
-        z = self.cypari.Vec(y + d * r)
-        return ProofOfSpecificOpen(z, t1, t2), d
+    def __make_rhs(self, t, d, c) -> cypari2.gen.Gen:
+        return self.cypari(t + d * c)
 
-    def verify_proof_of_opening(self, c1, proof: ProofOfOpen, d) -> bool:
+    def __A1_A2(self) -> tuple[cypari2.gen.Gen, cypari2.gen.Gen]:
+        return (self.comm_scheme.A1, self.comm_scheme.A2)
+
+    def __check_equivalences(self, lhs: tuple, rhs: tuple) -> bool:
+        return all(self.cypari(l == r) for l, r in zip(lhs, rhs))
+
+    def proof_of_opening(self, r) -> ProofOfOpen:
+        y = self.__make_y()
+        t = self.__make_lhs(self.comm_scheme.A1, y)
+        d = self.__d_sigma(t)
+        z = self.cypari.Vec(self.__make_rhs(y, d, r))
+        return ProofOfOpen(z, t)
+
+    def proof_of_specific_opening(self, r) -> ProofOfSpecificOpen:
+        y = self.__make_y()
+        t = tuple(self.__make_lhs(A, y) for A in self.__A1_A2())
+        d = self.__d_sigma(*t)
+        z = self.cypari.Vec(self.__make_rhs(y, d, r))
+        return ProofOfSpecificOpen(z, *t)
+
+    def verify_proof_of_opening(self, c1, proof: ProofOfOpen) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
-        )
-        rhs = self.cypari(proof.t + d * c1)
-
-        return bool(self.cypari(lhs == rhs))
+        lhs = self.__make_lhs(self.comm_scheme.A1, proof.z)
+        d = self.__d_sigma(proof.t)
+        rhs = self.__make_rhs(proof.t, d, c1)
+        return self.__check_equivalences(lhs, rhs)
 
     def verify_proof_of_specific_opening(
-        self, c1, c2, proof: ProofOfSpecificOpen, d, m
+        self, c1, c2, proof: ProofOfSpecificOpen, m
     ) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        r0 = [
-            self.comm_scheme.cypari.Pol("0"),
-            self.comm_scheme.cypari.Pol("0"),
-            self.comm_scheme.cypari.Pol("0"),
-        ]
+        r0 = (self.comm_scheme.cypari.Pol("0") for _ in range(3))
         cprime = commit_with_r(self.comm_scheme, m, r0)
         c1 = c1 - cprime[0][0]
         c2 = c2 - cprime[0][1]
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        d = self.__d_sigma(proof.t1, proof.t2)
+
+        lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
+        rhs = tuple(
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
-        rhs = self.cypari(proof.t1 + d * c1)
-        lhs2 = self.cypari(
-            self.comm_scheme.A2 * self.cypari.mattranspose(proof.z)
-        )
-        rhs2 = self.cypari(proof.t2 + d * c2)
-        return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
+        return self.__check_equivalences(lhs, rhs)
 
     def verify_proof_of_zero_opening(
-        self, c1, c2, proof: ProofOfSpecificOpen, d
+        self, c1, c2, proof: ProofOfSpecificOpen
     ) -> bool:
+        d = self.__d_sigma(proof.t1, proof.t2)
         if not self.__verify_z_bound(proof.z):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+
+        lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
+        rhs = tuple(
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
-        rhs = self.cypari(proof.t1 + d * c1)
-        lhs2 = self.cypari(
-            self.comm_scheme.A2 * self.cypari.mattranspose(proof.z)
-        )
-        rhs2 = self.cypari(proof.t2 + d * c2)
-        return bool(self.cypari(lhs == rhs) and self.cypari(lhs2 == rhs2))
+        return self.__check_equivalences(lhs, rhs)
 
     def proof_of_linear_relation(
         self, r1, r2, g1, g2
-    ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen, cypari2.gen.Gen]:
-        y1, y2 = self.__make_y(), self.__make_y()
-        d = self.__d_sigma()
+    ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen]:
+        y = [self.__make_y() for _ in range(2)]
         u = self.cypari(
             self.comm_scheme.A2
             * (
-                g2 * self.cypari.mattranspose(y1)
-                - g1 * self.cypari.mattranspose(y2)
+                g2 * self.cypari.mattranspose(y[0])
+                - g1 * self.cypari.mattranspose(y[1])
             )
         )
-        first_proof = self.__make_proof_open(y1, d, r1)
-        second_proof = self.__make_proof_open(y2, d, r2)
-        return first_proof, second_proof, u, d
+        t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
+        d = self.__d_sigma(*t, g1, g2)
+        z = self.cypari.Vec(y + d * r for y, r in zip(y, (r1, r2)))
+        return ProofOfOpen(z[0], t[0]), ProofOfOpen(z[1], t[1]), u
 
     def verify_proof_of_linear_relation(
-        self, proof_one: ProofOfOpenLinear, proof_two: ProofOfOpenLinear, u, d
+        self, proof: tuple[ProofOfOpenLinear, ProofOfOpenLinear], u
     ) -> bool:
-        if not self.__initial_check(proof_one, proof_two, d=d):
+        d = self.__d_sigma(proof[0].t, proof[1].t, proof[0].g, proof[1].g)
+        if not self.__initial_check(*proof, d=d):
             return False
         lhs = self.cypari(
             self.comm_scheme.A2
             * (
-                proof_two.g * self.cypari.mattranspose(proof_one.z)
-                - proof_one.g * self.cypari.mattranspose(proof_two.z)
+                proof[1].g * self.cypari.mattranspose(proof[0].z)
+                - proof[0].g * self.cypari.mattranspose(proof[1].z)
             )
         )
+
         rhs = self.cypari(
-            (proof_two.g * proof_one.c[0][1] - proof_one.g * proof_two.c[0][1])
-            * d
+            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d
             + u
         )
-        return bool(self.cypari(lhs == rhs))
+        return self.__check_equivalences(lhs, rhs)
 
     def __make_t(self, y):
         return self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
@@ -161,13 +158,12 @@ class BDLOPZK:
     def proof_of_sum(self, r1, r2, r3, g1, g2, g3) -> tuple[
         tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen],
         cypari2.gen.Gen,
-        cypari2.gen.Gen,
     ]:
-        d = self.__d_sigma()
         y = tuple(self.__make_y() for _ in range(3))
         r = r1, r2, r3
-        t = [self.__make_t(i) for i in y]
-        z = [self.cypari.Vec(y + d * r) for y, r in zip(y, r)]
+        t = tuple(self.__make_t(i) for i in y)
+        d = self.__d_sigma(*t)
+        z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
         proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen](
             ProofOfOpen(z, t) for z, t in zip(z, t)
         )
@@ -179,36 +175,35 @@ class BDLOPZK:
                 - g3 * self.cypari.mattranspose(y[2])
             )
         )
-        return proof, u, d
+        return proof, u
 
     def verify_proof_of_sum(
         self,
         proof: tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear],
         u: cypari2.gen.Gen,
-        d: cypari2.gen.Gen,
     ) -> bool:
-        proof_one, proof_two, proof_three = proof
+        t = (proof.t for proof in proof)
+        d = self.__d_sigma(*t)
         if not self.__initial_check(*proof, d=d):
             return False
-
         lhs = self.cypari(
             self.comm_scheme.A2
             * (
-                proof_one.g * self.cypari.mattranspose(proof_one.z)
-                + proof_two.g * self.cypari.mattranspose(proof_two.z)
-                - proof_three.g * self.cypari.mattranspose(proof_three.z)
+                proof[0].g * self.cypari.mattranspose(proof[0].z)
+                + proof[1].g * self.cypari.mattranspose(proof[1].z)
+                - proof[2].g * self.cypari.mattranspose(proof[2].z)
             )
         )
         rhs = self.cypari(
             (
-                proof_one.g * proof_one.c[0][1]
-                + proof_two.g * proof_two.c[0][1]
-                - proof_three.g * proof_three.c[0][1]
+                proof[0].g * proof[0].c[0][1]
+                + proof[1].g * proof[1].c[0][1]
+                - proof[2].g * proof[2].c[0][1]
             )
             * d
             + u
         )
-        return bool(self.cypari(lhs == rhs))
+        return self.__check_equivalences(lhs, rhs)
 
 
 def commit(C: CommitmentScheme, m):
@@ -226,7 +221,7 @@ def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_opening(r)
-    open = ZK.verify_proof_of_opening(c[0][0], *proof)
+    open = ZK.verify_proof_of_opening(c[0][0], proof)
     return open
 
 
@@ -234,20 +229,20 @@ def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_specific_opening(r)
-    open = ZK.verify_proof_of_specific_opening(c[0][0], c[0][1], *proof, m)
+    open = ZK.verify_proof_of_specific_opening(c[0][0], c[0][1], proof, m)
     return open
 
 
 def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
-    g1 = comm_scheme.get_challenge()
-    g2 = comm_scheme.get_challenge()
-    c1, r1 = commit(comm_scheme, cypari(g1 * m))
-    c2, r2 = commit(comm_scheme, cypari(g2 * m))
-    first, second, *rest = ZK.proof_of_linear_relation(r1, r2, g1, g2)
-    first = ProofOfOpenLinear(c1, g1, proof=first)
-    second = ProofOfOpenLinear(c2, g2, proof=second)
-    open = ZK.verify_proof_of_linear_relation(first, second, *rest)
+    g = [comm_scheme.get_challenge() for _ in range(2)]
+
+    c1, r1 = commit(comm_scheme, cypari(g[0] * m))
+    c2, r2 = commit(comm_scheme, cypari(g[1] * m))
+    first, second, u = ZK.proof_of_linear_relation(r1, r2, *g)
+    first = ProofOfOpenLinear(c1, g[0], proof=first)
+    second = ProofOfOpenLinear(c2, g[1], proof=second)
+    open = ZK.verify_proof_of_linear_relation((first, second), u)
     return open
 
 
@@ -258,7 +253,7 @@ def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
     c1, r1 = commit(comm_scheme, cypari(g3 * m1))
     c2, r2 = commit(comm_scheme, cypari(g3 * m2))
     c3, r3 = commit(comm_scheme, cypari(g1 * m1 + g2 * m2))
-    proof, *rest = ZK.proof_of_sum(r1, r2, r3, g1, g2, g3)
+    proof, u = ZK.proof_of_sum(r1, r2, r3, g1, g2, g3)
     proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
         ProofOfOpenLinear(c, g, proof=proof)
         for c, g, proof in [
@@ -267,7 +262,7 @@ def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
             [c3, g3, proof[2]],
         ]
     )
-    open = ZK.verify_proof_of_sum(proof, *rest)
+    open = ZK.verify_proof_of_sum(proof, u)
     return open
 
 

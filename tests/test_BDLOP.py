@@ -58,7 +58,7 @@ def test_proof_of_specific_open_valid(ZK, commit):
     commit, c = commit
     proof = ZK.proof_of_specific_opening(commit.r)
     assert ZK.verify_proof_of_specific_opening(
-        c[0][0], c[0][1], *proof, commit.m
+        c[0][0], c[0][1], proof, commit.m
     )
 
 
@@ -68,7 +68,7 @@ def test_proof_of_open_valid(ZK, commit):
     """
     commit, c = commit
     proof = ZK.proof_of_opening(commit.r)
-    assert ZK.verify_proof_of_opening(c[0][0], *proof)
+    assert ZK.verify_proof_of_opening(c[0][0], proof)
 
 
 def test_proof_of_open_invalid(ZK, commit, r_open):
@@ -78,7 +78,7 @@ def test_proof_of_open_invalid(ZK, commit, r_open):
     """
     commit, c = commit
     proof = ZK.proof_of_opening(r_open)
-    assert not ZK.verify_proof_of_opening(c[0][0], *proof)
+    assert not ZK.verify_proof_of_opening(c[0][0], proof)
 
 
 def test_proof_of_linear(ZK, comm_scheme, poly, cypari):
@@ -89,12 +89,12 @@ def test_proof_of_linear(ZK, comm_scheme, poly, cypari):
     c = tuple(
         comm_scheme.commit(Commit(cypari(g * m), r)) for g, r in zip(g, r)
     )
-    *proofs, u, d = ZK.proof_of_linear_relation(*r, *g)
+    *proofs, u = ZK.proof_of_linear_relation(*r, *g)
     proofs = tuple[ProofOfOpenLinear, ProofOfOpenLinear](
         ProofOfOpenLinear(c, g, proof=proof)
         for c, g, proof in zip(c, g, proofs)
     )
-    assert ZK.verify_proof_of_linear_relation(*proofs, u, d)
+    assert ZK.verify_proof_of_linear_relation(proofs, u)
 
 
 def test_proof_of_sum(ZK, comm_scheme, poly, cypari):
