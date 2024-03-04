@@ -2,7 +2,6 @@ import math
 import time
 import cypari2
 import numpy as np
-import random
 from utils.Polynomial import Polynomial
 from type.classes import Commit, CommitOpen
 
@@ -80,16 +79,7 @@ class CommitmentScheme:
         return r
 
     def get_challenge(self):
-        """
-        Provides a challenge in the ring R_q with an l_inf norm of 1.
-        Additionally it has a l_1 norm of kappa and is small in relation
-        to N.
-        """
-        bound = self.N // 4
-        indices = sorted(random.sample(range(bound), self.kappa), reverse=True)
-        pol = [f"x^{i}" + random.choice([" + ", " - "]) for i in indices]
-        pol = "".join(pol)[:-3]
-        return self.polynomial.in_rq(self.cypari.Pol(pol))
+        return self.polynomial.challenge(kappa=self.kappa)
 
     def honest_func(self):
         return self.cypari.Pol("1")
