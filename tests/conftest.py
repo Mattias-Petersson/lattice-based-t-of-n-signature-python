@@ -2,6 +2,7 @@ import pytest
 
 from CommitmentScheme import CommitmentScheme
 from type.classes import Commit
+from utils.Polynomial import Polynomial
 
 pytest.fixture(scope="session")
 
@@ -18,7 +19,7 @@ def cypari(comm_scheme):
 
 @pytest.fixture
 def poly(comm_scheme):
-    return comm_scheme.polynomial
+    return Polynomial(comm_scheme.N, comm_scheme.q)
 
 
 @pytest.fixture

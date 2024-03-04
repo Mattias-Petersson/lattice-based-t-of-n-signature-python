@@ -21,17 +21,6 @@ def commit_open_honest(commit, honest_f) -> CommitOpen:
     return CommitOpen(c, honest_f, commit=commit)
 
 
-@pytest.fixture
-def challenge(comm_scheme, poly):
-    """
-    Returns the challenge, converting q-1 to -1 as these are congruent mod q.
-    """
-    challenge = poly.pol_to_arr(comm_scheme.get_challenge())
-    return np.array(
-        [i - comm_scheme.q if i == comm_scheme.q - 1 else i for i in challenge]
-    )
-
-
 def test_faulty_kappa():
     with pytest.raises(ValueError) as excinfo:
         CommitmentScheme(N=50, kappa=51)
@@ -41,24 +30,13 @@ def test_faulty_kappa():
     )
 
 
-def test_challenge(challenge, comm_scheme):
-    """
-    Verify that a challenge has the proper norms.
-    """
-    assert (
-        np.linalg.norm(challenge, np.inf) == 1
-        and np.linalg.norm(challenge, 1) == comm_scheme.kappa
-    )
-
-
 def test_func_norm(comm_scheme, poly):
     """
     The function to open is the difference of two small challenges.
     As such this should have an l_inf norm of at most two.
     """
     f = poly.pol_to_arr(comm_scheme.func_open())
-    normalized_f = np.array([i - comm_scheme.q if i > 2 else i for i in f])
-    assert np.linalg.norm(normalized_f, np.inf) <= 2
+    assert np.linalg.norm(f, np.inf) <= 2
 
 
 def test_commit_r_open(comm_scheme, commit, honest_f):
