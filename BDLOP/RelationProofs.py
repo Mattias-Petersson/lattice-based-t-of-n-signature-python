@@ -9,6 +9,7 @@ class RelationProver:
         self.ZK = ZK
         self.comm_scheme = comm_scheme
 
+    # Lacks Proof Of Shortness
     def prove_sk(
         self,
         ps,
