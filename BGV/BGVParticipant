@@ -1,0 +1,145 @@
+from BDLOP.CommitmentScheme import CommitmentScheme
+from BDLOP.RelationProofs import RelationProver
+from SecretShare import reconstruct, share
+from type.classes import Commit, CommitOpen, ProofOfOpenLinear
+from utils.Polynomial import Polynomial
+
+
+class BGVParticipant:
+    def __init__(
+        self,
+        t,
+        n,
+        d,
+        p,
+        q,
+        N,
+        i,
+        comm_scheme: CommitmentScheme,
+        RelationProofs: RelationProver,
+        cypari,
+    ) -> None:
+        if i > n:
+            raise ValueError()
+        self.t = t  # Threshold
+        self.n = n  # Participants
+        self.d = d  #
+        self.p = p  # prime much smaller than q
+        self.q = q  # prime modulo
+        self.N = N  # length of polynomials
+        self.i = i
+        self.PH = Polynomial(N, q)
+        self.cypari = cypari
+        self.comm_scheme = comm_scheme
+        self.RP = RelationProofs
+        pass
+
+    def step1(self):
+        ai = Polynomial.__uniform_element(Polynomial())
+        hai = hash(ai)
+        return (hai, ai)
+
+    def step2(self, haj, aj):
+        for i in range(len(haj)):
+            if haj[i] != hash(aj[i]):
+                raise RuntimeError(str(i))
+        self.a = 0
+        for i in aj:
+            self.a = self.cypari(self.a + i)
+        self.siprime = self.PH.__gaussian_element(1)
+        self.eiprime = self.PH.__gaussian_element(1)
+        self.bi = self.cypari(self.a * self.siprime + self.p * self.eiprime)
+        hbi = hash(self.bi)
+        return hbi
+
+    def step3(self, hbj):
+        self.hbj = hbj
+        psiprime = self.comm_scheme.r_commit()
+        peiprime = self.comm_scheme.r_commit()
+        self.comsi = self.comm_scheme.commit(Commit(self.siprime, psiprime))
+        self.comei = self.comm_scheme.commit(Commit(self.eiprime, peiprime))
+        sij = share(self.siprime, self.n, self.t, self.q)
+        eij = share(self.eiprime, self.n, self.t, self.q)
+        psij = []
+        peij = []
+        comsij = []
+        comeij = []
+        bij = []
+        for i in range(self.n):
+            ps = self.comm_scheme.r_commit()
+            pe = self.comm_scheme.r_commit()
+            psij.append(ps)
+            comsij.append(self.comm_scheme.commit(Commit(sij[i], ps)))
+            peij.append(pe)
+            comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
+            bij.append(self.cypari(self.a * sij[i] + self.p * eij[i]))
+        proof_sk = self.RP.prove_sk(psiprime, peiprime, psij, peij, self.a, self.p)
+        return (
+            self.comsi,
+            self.comei,
+            comeij,
+            self.bi,
+            bij,
+            proof_sk,
+            (comsij, sij, psij),
+        )
+
+    def step4(
+        self,
+        bj,
+        bjk,
+        comsj,
+        comej,
+        comsjk,
+        comejk,
+        proofs_sk: list[
+            tuple[
+                ProofOfOpenLinear,
+                ProofOfOpenLinear,
+                ProofOfOpenLinear,
+                list[ProofOfOpenLinear],
+                list[ProofOfOpenLinear],
+                list[ProofOfOpenLinear],
+            ]
+        ],
+        package_sji,
+    ):
+        for i in range(self.n):
+            if i != self.i:
+                if self.hbj != hash(bj[i]) or bj[i] != reconstruct(
+                    bjk[i][: self.t], range(self.t)
+                ):
+                    raise RuntimeError(str(i))
+                if not self.comm_scheme.open(CommitOpen(*package_sji[i])):
+                    raise RuntimeError(str(i))
+                if not self.RP.verify_sk(
+                    *proofs_sk[i],
+                    bj[i],
+                    bjk[i],
+                    self.a,
+                    self.p,
+                    comsj[i],
+                    comej[i],
+                    comsjk[i],
+                    comejk[i]
+                ):
+                    raise RuntimeError(str(i))
+
+        b = 0
+        si = 0
+        psi = 0
+        for i in range(self.n):
+            b = self.cypari(b + bj[i])
+            si = self.cypari(si + package_sji[i][1])
+            psi = self.cypari(psi + package_sji[i][2])
+        comsk = []
+        for i in range(self.i):
+            temp = 0
+            for j in range(self.i):
+                temp = self.cypari(
+                    temp + comsjk[j][i]
+                )  # this should maybe be [i][j], test if fails
+            comsk.append(temp)
+        self.pk = (self.a, b, comsk)
+        self.ski = (si, psi)
+        return self.pk
