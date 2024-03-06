@@ -28,7 +28,7 @@ class Polynomial:
         self.N = N
         self.q = q
 
-    def __uniform_element(self, bound: int = 0) -> cypari2.gen.Gen:
+    def uniform_element(self, bound: int = 0) -> cypari2.gen.Gen:
         if bound == 0:
             bound = (self.q - 1) // 2
         randomized_coeffs = np.random.randint(bound, size=self.N)
@@ -43,7 +43,7 @@ class Polynomial:
         return self.in_rq(poly)
 
     def __uniform_list(self, n: int, bound: int = 0):
-        return [self.__uniform_element(bound) for _ in range(n)]
+        return [self.uniform_element(bound) for _ in range(n)]
 
     def __gaussian_list(self, n: int, sigma: int):
         return [self.__gaussian_element(sigma) for _ in range(n)]
@@ -73,7 +73,7 @@ class Polynomial:
     ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
         if isinstance(n, int):
             return (
-                self.__uniform_element(bound)
+                self.uniform_element(bound)
                 if n == 1
                 else self.cypari.vector(n, self.__uniform_list(n, bound))
             )
