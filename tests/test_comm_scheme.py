@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 
 from BDLOP.CommitmentScheme import CommitmentScheme
 from type.classes import CommitOpen
@@ -8,11 +7,6 @@ from type.classes import CommitOpen
 @pytest.fixture
 def honest_f(comm_scheme):
     return comm_scheme.honest_func()
-
-
-@pytest.fixture
-def other_f(comm_scheme):
-    return comm_scheme.func_open()
 
 
 @pytest.fixture
@@ -28,15 +22,6 @@ def test_faulty_kappa():
         str(excinfo.value)
         == "Kappa needs to be smaller than N to make a valid challenge."
     )
-
-
-def test_func_norm(comm_scheme, poly):
-    """
-    The function to open is the difference of two small challenges.
-    As such this should have an l_inf norm of at most two.
-    """
-    f = poly.pol_to_arr(comm_scheme.func_open())
-    assert np.linalg.norm(f, np.inf) <= 2
 
 
 def test_commit_r_open(comm_scheme, commit, honest_f):
@@ -56,13 +41,10 @@ def test_commit_r_commit(comm_scheme, commit_open_honest):
     assert comm_scheme.open(commit_open_honest)
 
 
-def test_commit_random_f(comm_scheme, other_f, commit):
+def test_commit_random_f(comm_scheme, commit, poly):
     """
     A commit where f is not from an honest verifier should fail.
     """
     commit, c = commit
+    other_f = poly.small_invertible(comm_scheme.kappa)
     assert not comm_scheme.open(CommitOpen(c, other_f, commit=commit))
-
-
-def test_honest_func(cypari, honest_f):
-    assert cypari.type(honest_f) == cypari.type("t_POL")

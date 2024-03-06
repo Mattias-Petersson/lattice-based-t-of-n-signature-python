@@ -130,6 +130,17 @@ class Polynomial:
             pol += i + f"x^{j}"
         return self.cypari.Pol(pol)
 
+    def small_invertible(self, kappa: int) -> cypari2.gen.Gen:
+        """
+        The difference of two challenges c will have an l_inf norm of at
+        most two. As such, all elements here will be invertible in R_q.
+        """
+        c1 = self.challenge(kappa)
+        c2 = self.challenge(kappa)
+        while self.cypari(c1 == c2):
+            c1 = self.challenge(kappa)
+        return self.cypari(c2 - c1)
+
     def hash(self, kappa: int, *args) -> cypari2.gen.Gen:
         """
         Hash an input of an arbitrary number of polynomial arrays, outputting

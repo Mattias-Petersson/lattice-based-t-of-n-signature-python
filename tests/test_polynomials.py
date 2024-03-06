@@ -12,6 +12,14 @@ def test_challenge(comm_scheme, poly):
     )
 
 
+def test_small_invertible(comm_scheme, poly):
+    """
+    The difference of two challenges should have an l_inf norm of at most two.
+    """
+    f = poly.pol_to_arr(poly.small_invertible(comm_scheme.kappa))
+    assert np.linalg.norm(f, np.inf) <= 2
+
+
 def test_hash_equivalence(comm_scheme, poly, cypari):
     """
     Our hash function should output the same polynomial given

@@ -63,7 +63,6 @@ class CommitmentScheme:
         zeroes_message = self.cypari.matconcat(
             self.cypari.mattranspose([zeroes, c.m])
         )
-        zeroes = self.cypari.Vec(zeroes_message)
         return Ar, zeroes_message
 
     def r_commit(self) -> list:
@@ -83,17 +82,6 @@ class CommitmentScheme:
 
     def honest_func(self):
         return self.cypari.Pol("1")
-
-    def func_open(self) -> list:
-        """
-        f is a polynomial consisting of the difference of two small challenges.
-        This will guaranteed have an l_inf norm of at most 2.
-        """
-        c1: cypari2.Gen = self.get_challenge()
-        c2: cypari2.Gen = self.get_challenge()
-        if self.cypari(c1 == c2):
-            c1 = self.get_challenge()
-        return self.cypari(c2 - c1)
 
     def commit(self, c: Commit) -> list[cypari2.gen.Gen]:
         Ar, zerox = self.__a_with_message(c)
