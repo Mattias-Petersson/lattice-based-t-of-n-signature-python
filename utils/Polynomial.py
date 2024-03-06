@@ -135,7 +135,7 @@ class Polynomial:
         Hash an input of an arbitrary number of polynomial arrays, outputting
         a single polynomial.
         """
-        h = hashlib.sha256()
+        h = hashlib.sha384()
         for i in args:
             h.update(str.encode(str(i)))
         integers_hash: list[int] = [i for i in h.digest()]
