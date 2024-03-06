@@ -1,6 +1,6 @@
 from BDLOP.CommitmentScheme import CommitmentScheme
 from BDLOP.RelationProofs import RelationProver
-from SecretShare import reconstruct, share
+from SecretShare import reconstruct_poly, share_poly
 from type.classes import Commit, CommitOpen, ProofOfOpenLinear
 from utils.Polynomial import Polynomial
 
@@ -18,7 +18,7 @@ class BGVParticipant:
         comm_scheme: CommitmentScheme,
         RelationProofs: RelationProver,
         cypari,
-    ) -> None:
+    ):
         if i > n:
             raise ValueError()
         self.t = t  # Threshold
@@ -32,10 +32,9 @@ class BGVParticipant:
         self.cypari = cypari
         self.comm_scheme = comm_scheme
         self.RP = RelationProofs
-        pass
 
     def step1(self):
-        ai = Polynomial.__uniform_element(Polynomial())
+        ai = self.PH.uniform_array(1)
         hai = hash(ai)
         return (hai, ai)
 
@@ -46,8 +45,8 @@ class BGVParticipant:
         self.a = 0
         for i in aj:
             self.a = self.cypari(self.a + i)
-        self.siprime = self.PH.__gaussian_element(1)
-        self.eiprime = self.PH.__gaussian_element(1)
+        self.siprime = self.PH.gaussian_array(1, 1)
+        self.eiprime = self.PH.gaussian_array(1, 1)
         self.bi = self.cypari(self.a * self.siprime + self.p * self.eiprime)
         hbi = hash(self.bi)
         return hbi
@@ -58,8 +57,8 @@ class BGVParticipant:
         peiprime = self.comm_scheme.r_commit()
         self.comsi = self.comm_scheme.commit(Commit(self.siprime, psiprime))
         self.comei = self.comm_scheme.commit(Commit(self.eiprime, peiprime))
-        sij = share(self.siprime, self.n, self.t, self.q)
-        eij = share(self.eiprime, self.n, self.t, self.q)
+        sij = share_poly(self.siprime, self.n, self.t, self.q)
+        eij = share_poly(self.eiprime, self.n, self.t, self.q)
         psij = []
         peij = []
         comsij = []
@@ -69,6 +68,7 @@ class BGVParticipant:
             ps = self.comm_scheme.r_commit()
             pe = self.comm_scheme.r_commit()
             psij.append(ps)
+            print(sij[i])
             comsij.append(self.comm_scheme.commit(Commit(sij[i], ps)))
             peij.append(pe)
             comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
@@ -77,43 +77,39 @@ class BGVParticipant:
         return (
             self.comsi,
             self.comei,
+            comsij,
             comeij,
             self.bi,
             bij,
             proof_sk,
-            (comsij, sij, psij),
+            sij,
+            psij,
         )
 
     def step4(
         self,
-        bj,
-        bjk,
         comsj,
         comej,
         comsjk,
         comejk,
-        proofs_sk: list[
-            tuple[
-                ProofOfOpenLinear,
-                ProofOfOpenLinear,
-                ProofOfOpenLinear,
-                list[ProofOfOpenLinear],
-                list[ProofOfOpenLinear],
-                list[ProofOfOpenLinear],
-            ]
-        ],
-        package_sji,
+        bj,
+        bjk,
+        proofs_sk,
+        sjk,
+        psjk,
     ):
         for i in range(self.n):
             if i != self.i:
-                if self.hbj != hash(bj[i]) or bj[i] != reconstruct(
-                    bjk[i][: self.t], range(self.t)
-                ):
-                    raise RuntimeError(str(i))
-                if not self.comm_scheme.open(CommitOpen(*package_sji[i])):
-                    raise RuntimeError(str(i))
+                if self.hbj[i] != hash(bj[i]):
+                    raise RuntimeError(str(i) + " wrongHash")
+                print(len(range(self.t)))
+                print(len(bjk[i][: self.t]))
+                if bj[i] != reconstruct_poly(bjk[: self.t][i], range(self.t)):
+                    print("raise RuntimeError(str(i))")
+                # if not self.comm_scheme.open(comsjk[i], sjk[i], psjk[i]):
+                # raise RuntimeError(str(i))
                 if not self.RP.verify_sk(
-                    *proofs_sk[i],
+                    *(proofs_sk[i]),
                     bj[i],
                     bjk[i],
                     self.a,
@@ -121,7 +117,7 @@ class BGVParticipant:
                     comsj[i],
                     comej[i],
                     comsjk[i],
-                    comejk[i]
+                    comejk[i],
                 ):
                     raise RuntimeError(str(i))
 
@@ -130,16 +126,17 @@ class BGVParticipant:
         psi = 0
         for i in range(self.n):
             b = self.cypari(b + bj[i])
-            si = self.cypari(si + package_sji[i][1])
-            psi = self.cypari(psi + package_sji[i][2])
+            si = self.cypari(si + sjk[i][self.i])
+            psi = self.cypari(psi + psjk[i][self.i])
         comsk = []
-        for i in range(self.i):
+        for i in range(self.n):
             temp = 0
-            for j in range(self.i):
+            for j in range(self.n):
                 temp = self.cypari(
-                    temp + comsjk[j][i]
+                    temp + comsjk[i][j]
                 )  # this should maybe be [i][j], test if fails
             comsk.append(temp)
+        print(len(comsk))
         self.pk = (self.a, b, comsk)
         self.ski = (si, psi)
         return self.pk
