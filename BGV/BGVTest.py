@@ -57,11 +57,15 @@ for i in range(len(participants)):
     comek = []
     bk = []
     comsk = []
+    sk = []
+    psk = []
     for j in range(len(participants)):
         comsk.append(comsjk[j][i])
         bk.append(bjk[j][i])
         comek.append(comejk[j][i])
-    step4.append(p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sjk, psjk))
+        sk.append(sjk[j][i])
+        psk.append(psjk[j][i])
+    step4.append(p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk))
 print(bool(comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0])))
 print(bool(comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1])))
 for i in range(len(step4[0][2])):

@@ -111,9 +111,7 @@ class BGVParticipant:
                 ):
                     raise RuntimeError(str(i))
                 if not self.comm_scheme.open(
-                    CommitOpen(
-                        c=comsjk[i][self.i], f=1, m=sjk[i][self.i], r=psjk[i][self.i]
-                    )
+                    CommitOpen(c=comsjk[i][self.i], f=1, m=sjk[i], r=psjk[i])
                 ):
                     raise RuntimeError(str(i))
                 if not self.RP.verify_sk(
@@ -134,8 +132,8 @@ class BGVParticipant:
         psi = 0
         for i in range(self.n):
             b = self.cypari(b + bj[i])
-            si = self.cypari(si + sjk[i][self.i])
-            psi = self.cypari(psi + psjk[i][self.i])
+            si = self.cypari(si + sjk[i])
+            psi = self.cypari(psi + psjk[i])
         comsk = []
         for i in range(self.n):
             temp = 0
