@@ -1,6 +1,6 @@
 from BDLOP.CommitmentScheme import CommitmentScheme
 from BDLOP.RelationProofs import RelationProver
-from SecretShare import reconstruct_poly, share_poly
+from SecretShare import SecretShare
 from type.classes import Commit, CommitOpen, ProofOfOpenLinear
 from utils.Polynomial import Polynomial
 
@@ -17,6 +17,7 @@ class BGVParticipant:
         i,
         comm_scheme: CommitmentScheme,
         RelationProofs: RelationProver,
+        SSS: SecretShare,
         cypari,
     ):
         if i > n:
@@ -29,6 +30,7 @@ class BGVParticipant:
         self.N = N  # length of polynomials
         self.i = i
         self.PH = Polynomial(N, q)
+        self.SSS = SSS
         self.cypari = cypari
         self.comm_scheme = comm_scheme
         self.RP = RelationProofs
@@ -57,8 +59,8 @@ class BGVParticipant:
         peiprime = self.comm_scheme.r_commit()
         self.comsi = self.comm_scheme.commit(Commit(self.siprime, psiprime))
         self.comei = self.comm_scheme.commit(Commit(self.eiprime, peiprime))
-        sij = share_poly(self.siprime, self.n, self.t, self.q)
-        eij = share_poly(self.eiprime, self.n, self.t, self.q)
+        sij = self.SSS.share_poly(self.siprime, self.n, self.t, self.q)
+        eij = self.SSS.share_poly(self.eiprime, self.n, self.t, self.q)
         psij = []
         peij = []
         comsij = []
@@ -68,7 +70,6 @@ class BGVParticipant:
             ps = self.comm_scheme.r_commit()
             pe = self.comm_scheme.r_commit()
             psij.append(ps)
-            print(sij[i])
             comsij.append(self.comm_scheme.commit(Commit(sij[i], ps)))
             peij.append(pe)
             comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
@@ -102,12 +103,19 @@ class BGVParticipant:
             if i != self.i:
                 if self.hbj[i] != hash(bj[i]):
                     raise RuntimeError(str(i) + " wrongHash")
-                print(len(range(self.t)))
-                print(len(bjk[i][: self.t]))
-                if bj[i] != reconstruct_poly(bjk[: self.t][i], range(self.t)):
-                    print("raise RuntimeError(str(i))")
-                # if not self.comm_scheme.open(comsjk[i], sjk[i], psjk[i]):
-                # raise RuntimeError(str(i))
+                smaller_bjk = []
+                for j in range(self.t):
+                    smaller_bjk.append(bjk[i][j])
+                if bj[i] != self.SSS.reconstruct_poly(
+                    smaller_bjk, range(1, self.t + 1)
+                ):
+                    raise RuntimeError(str(i))
+                if not self.comm_scheme.open(
+                    CommitOpen(
+                        c=comsjk[i][self.i], f=1, m=sjk[i][self.i], r=psjk[i][self.i]
+                    )
+                ):
+                    raise RuntimeError(str(i))
                 if not self.RP.verify_sk(
                     *(proofs_sk[i]),
                     bj[i],
@@ -132,11 +140,8 @@ class BGVParticipant:
         for i in range(self.n):
             temp = 0
             for j in range(self.n):
-                temp = self.cypari(
-                    temp + comsjk[i][j]
-                )  # this should maybe be [i][j], test if fails
+                temp = self.cypari(temp + comsjk[i][j])
             comsk.append(temp)
-        print(len(comsk))
         self.pk = (self.a, b, comsk)
         self.ski = (si, psi)
         return self.pk

@@ -1,13 +1,14 @@
 from BDLOP.BDLOPZK import BDLOPZK
 from BDLOP.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpenLinear
-import SecretShare
+from SecretShare import SecretShare
 
 
 class RelationProver:
-    def __init__(self, ZK: BDLOPZK, comm_scheme: CommitmentScheme):
+    def __init__(self, ZK: BDLOPZK, comm_scheme: CommitmentScheme, SSS: SecretShare):
         self.ZK = ZK
         self.comm_scheme = comm_scheme
+        self.SSS = SSS
 
     # Lacks Proof Of Shortness
     def prove_sk(
@@ -103,7 +104,7 @@ class RelationProver:
             if not self.ZK.verify_proof_of_opening(comeis[i][0][0], proofs3[i]):
                 print("False6")
                 return False
-        if b != SecretShare.reconstruct_poly(bis[:2], range(1, 3)):
+        if b != self.SSS.reconstruct_poly(bis[:2], range(1, 3)):
             print("False7")
-            return True  # ERROR
+            return False
         return True

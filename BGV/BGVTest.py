@@ -2,6 +2,7 @@ from BDLOP.BDLOPZK import BDLOPZK
 from BDLOP.CommitmentScheme import CommitmentScheme
 from BDLOP.RelationProofs import RelationProver
 from BGV.BGVParticipant import BGVParticipant
+from SecretShare import SecretShare
 
 
 n = 4
@@ -11,10 +12,11 @@ N = 1024
 participants = []
 comm_scheme = CommitmentScheme()
 ZK = BDLOPZK(comm_scheme)
-RP = RelationProver(ZK, comm_scheme)
+SSS = SecretShare(comm_scheme.polynomial.cypari)
+RP = RelationProver(ZK, comm_scheme, SSS)
 for i in range(n):
     participants.append(
-        BGVParticipant(t, n, 0, 2029, q, N, i, comm_scheme, RP, comm_scheme.cypari)
+        BGVParticipant(t, n, 0, 2029, q, N, i, comm_scheme, RP, SSS, comm_scheme.cypari)
     )
 step1 = []
 for p in participants:
@@ -62,4 +64,5 @@ for i in range(len(participants)):
     step4.append(p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sjk, psjk))
 print(bool(comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0])))
 print(bool(comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1])))
-print(bool(comm_scheme.polynomial.cypari(step4[0][2][1] == step4[1][2][1])))
+for i in range(len(step4[0][2])):
+    print(bool(comm_scheme.polynomial.cypari(step4[0][2][i] == step4[1][2][i])))
