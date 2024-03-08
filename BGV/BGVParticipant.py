@@ -140,6 +140,24 @@ class BGVParticipant:
             for j in range(self.n):
                 temp = self.cypari(temp + comsjk[i][j])
             comsk.append(temp)
+        self.b = b
         self.pk = (self.a, b, comsk)
         self.ski = (si, psi)
         return self.pk
+
+    def enc(self, m):
+        eprime = self.PH.gaussian_array(1, 1)
+        ebis = self.PH.gaussian_array(1, 1)
+        r = self.PH.gaussian_array(1, 1)
+        peprime = self.comm_scheme.r_commit()
+        pebis = self.comm_scheme.r_commit()
+        pr = self.comm_scheme.r_commit()
+        pm = self.comm_scheme.r_commit()
+        com_eprime = self.comm_scheme.commit(Commit(eprime, peprime))
+        com_ebis = self.comm_scheme.commit(Commit(ebis, pebis))
+        com_r = self.comm_scheme.commit(Commit(r, pr))
+        com_m = self.comm_scheme.commit(Commit(m, pm))
+        u = self.comm_scheme.cypari(self.a * r + self.p * eprime)
+        v = self.comm_scheme.cypari(self.b * r + self.p * ebis + m)
+        proof_enc = self.RP.prove_enc(com_eprime, com_ebis, com_r, com_m)
+        return (u, v, proof_enc)

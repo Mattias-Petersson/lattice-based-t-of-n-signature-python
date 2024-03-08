@@ -108,3 +108,64 @@ class RelationProver:
             print("False7")
             return False
         return True
+
+    def prove_enc(self, p_r, p_m, p_eprime, p_ebis, a, b, p):
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        proof1 = self.ZK.proof_of_sum(p_r, p_eprime, r0, a, p, 1)
+        proof2 = 0  # TODO: need proof of sum for 3 variables
+        proof3 = self.ZK.proof_of_opening(p_r)
+        proof4 = self.ZK.proof_of_opening(p_eprime)
+        proof5 = self.ZK.proof_of_opening(p_ebis)
+        proof6 = self.ZK.proof_of_opening(p_m)
+        return (proof1, proof2, proof3, proof4, proof5, proof6)
+
+    def verify_enc(
+        self,
+        proof1,
+        proof2,
+        proof3,
+        proof4,
+        proof5,
+        proof6,
+        a,
+        b,
+        p,
+        u,
+        v,
+        com_r,
+        com_m,
+        com_eprime,
+        com_ebis,
+    ):
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+
+        com_u = self.comm_scheme.commit(Commit(u, r0))
+        proof, *rest = proof1
+        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [com_r, a, proof[0]],
+                [com_eprime, p, proof[1]],
+                [com_u, 1, proof[2]],
+            ]
+        )
+        if not self.ZK.verify_proof_of_sum(proof, *rest):
+            return False
+        # TODO: proof 2
+        if not self.ZK.verify_proof_of_opening(com_r, proof3):
+            return False
+        if not self.ZK.verify_proof_of_opening(com_m, proof4):
+            return False
+        if not self.ZK.verify_proof_of_opening(com_eprime, proof5):
+            return False
+        if not self.ZK.verify_proof_of_opening(com_ebis, proof6):
+            return False
+        return True
