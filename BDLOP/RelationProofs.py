@@ -116,7 +116,7 @@ class RelationProver:
             self.comm_scheme.cypari.Pol("0"),
         ]
         proof1 = self.ZK.proof_of_sum(p_r, p_eprime, r0, a, p, 1)
-        proof2 = 0  # TODO: need proof of sum for 3 variables
+        proof2 = self.ZK.proof_of_triple_sum(p_r, p_ebis, p_m, r0, b, p, 1, 1)
         proof3 = self.ZK.proof_of_opening(p_r)
         proof4 = self.ZK.proof_of_opening(p_eprime)
         proof5 = self.ZK.proof_of_opening(p_ebis)
@@ -148,6 +148,7 @@ class RelationProver:
         ]
 
         com_u = self.comm_scheme.commit(Commit(u, r0))
+        com_v = self.comm_scheme.commit(Commit(v, r0))
         proof, *rest = proof1
         proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
             ProofOfOpenLinear(c, g, proof=proof)
@@ -159,7 +160,20 @@ class RelationProver:
         )
         if not self.ZK.verify_proof_of_sum(proof, *rest):
             return False
-        # TODO: proof 2
+        proof, *rest = proof2
+        proof = tuple[
+            ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+        ](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [com_r, b, proof[0]],
+                [com_ebis, p, proof[1]],
+                [com_m, 1, proof[2]],
+                [com_v, 1, proof[3]],
+            ]
+        )
+        if not self.ZK.verify_proof_of_triple_sum(proof, *rest):
+            return False
         if not self.ZK.verify_proof_of_opening(com_r, proof3):
             return False
         if not self.ZK.verify_proof_of_opening(com_m, proof4):
@@ -169,3 +183,9 @@ class RelationProver:
         if not self.ZK.verify_proof_of_opening(com_ebis, proof6):
             return False
         return True
+
+    def prove_ds(self):
+        raise RuntimeError("not implemented")
+
+    def verify_ds(self):
+        raise RuntimeError("not implemented")

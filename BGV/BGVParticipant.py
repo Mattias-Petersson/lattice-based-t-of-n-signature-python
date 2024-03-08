@@ -159,5 +159,29 @@ class BGVParticipant:
         com_m = self.comm_scheme.commit(Commit(m, pm))
         u = self.comm_scheme.cypari(self.a * r + self.p * eprime)
         v = self.comm_scheme.cypari(self.b * r + self.p * ebis + m)
-        proof_enc = self.RP.prove_enc(com_eprime, com_ebis, com_r, com_m)
-        return (u, v, proof_enc)
+        proof_ctx = self.RP.prove_enc(pr, pm, peprime, pebis, self.a, self.b, self.p)
+        return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
+
+    def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis):
+        if not self.RP.verify_enc(
+            *proof_ctx, self.a, self.b, self.p, u, v, com_r, com_m, com_eprime, com_ebis
+        ):
+            return 0
+        ptx = self.cypari(v - self.ski[0] * u)
+        return ptx
+
+    def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
+        lagrange = 0
+        for j in U:
+            if j != self.i:
+                lagrange += j / (j - self.i)
+        m_i = self.cypari(lagrange * self.ski[0] * u)
+        E_i = self.PH.uniform_array(1)
+        d_i = self.cypari(m_i + self.p * E_i)
+        pE_i = self.comm_scheme.r_commit()
+        com_Ei = self.comm_scheme.commit(Commit(E_i, pE_i))
+        proof_dsi = 0  # TODO
+        return (d_i, proof_dsi, com_Ei, self.comm_scheme.commit(Commit(*self.ski)))
+
+    def comb(self):
+        raise RuntimeError("not implemented")

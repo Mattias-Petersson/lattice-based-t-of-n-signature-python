@@ -28,9 +28,7 @@ class BDLOPZK:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
-        )
+        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
         rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
@@ -97,22 +95,18 @@ class BDLOPZK:
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c)
-            for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
-    def verify_proof_of_zero_opening(
-        self, c1, c2, proof: ProofOfSpecificOpen
-    ) -> bool:
+    def verify_proof_of_zero_opening(self, c1, c2, proof: ProofOfSpecificOpen) -> bool:
         d = self.__d_sigma(proof.t1, proof.t2)
         if not self.__verify_z_bound(proof.z):
             return False
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c)
-            for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
@@ -147,8 +141,7 @@ class BDLOPZK:
         )
 
         rhs = self.cypari(
-            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d
-            + u
+            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d + u
         )
         return self.__check_equivalences(lhs, rhs)
 
@@ -199,6 +192,61 @@ class BDLOPZK:
                 proof[0].g * proof[0].c[0][1]
                 + proof[1].g * proof[1].c[0][1]
                 - proof[2].g * proof[2].c[0][1]
+            )
+            * d
+            + u
+        )
+        return self.__check_equivalences(lhs, rhs)
+
+    def proof_of_triple_sum(self, r1, r2, r3, r4, g1, g2, g3, g4) -> tuple[
+        tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen, ProofOfOpen],
+        cypari2.gen.Gen,
+    ]:
+        y = tuple(self.__make_y() for _ in range(4))
+        r = r1, r2, r3, r4
+        t = tuple(self.__make_t(i) for i in y)
+        d = self.__d_sigma(*t)
+        z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
+        proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen, ProofOfOpen](
+            ProofOfOpen(z, t) for z, t in zip(z, t)
+        )
+        u = self.cypari(
+            self.comm_scheme.A2
+            * (
+                g1 * self.cypari.mattranspose(y[0])
+                + g2 * self.cypari.mattranspose(y[1])
+                + g3 * self.cypari.mattranspose(y[2])
+                - g4 * self.cypari.mattranspose(y[3])
+            )
+        )
+        return proof, u
+
+    def verify_proof_of_triple_sum(
+        self,
+        proof: tuple[
+            ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+        ],
+        u: cypari2.gen.Gen,
+    ) -> bool:
+        t = (proof.t for proof in proof)
+        d = self.__d_sigma(*t)
+        if not self.__initial_check(*proof, d=d):
+            return False
+        lhs = self.cypari(
+            self.comm_scheme.A2
+            * (
+                proof[0].g * self.cypari.mattranspose(proof[0].z)
+                + proof[1].g * self.cypari.mattranspose(proof[1].z)
+                + proof[2].g * self.cypari.mattranspose(proof[2].z)
+                - proof[3].g * self.cypari.mattranspose(proof[3].z)
+            )
+        )
+        rhs = self.cypari(
+            (
+                proof[0].g * proof[0].c[0][1]
+                + proof[1].g * proof[1].c[0][1]
+                + proof[2].g * proof[1].c[0][2]
+                - proof[3].g * proof[2].c[0][3]
             )
             * d
             + u
