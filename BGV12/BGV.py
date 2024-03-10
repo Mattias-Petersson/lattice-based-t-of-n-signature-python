@@ -1,12 +1,14 @@
-from BDLOP.BDLOPZK import BDLOPZK
-from BDLOP.CommitmentScheme import CommitmentScheme
-from BDLOP.RelationProofs import RelationProver
-from BGV.BGVParticipant import BGVParticipant
+from BDLOP16.BDLOP import BDLOP
+from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.RelationProofs import RelationProver
+from BGV12.BGVParticipant import BGVParticipant
 from SecretShare import SecretShare
 
 
 class BGV:
-    def __init__(self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024):
+    def __init__(
+        self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024
+    ):
         self.participants = []
         self.comm_scheme = comm_scheme
         self.ZK = ZK
@@ -15,7 +17,17 @@ class BGV:
         for i in range(n):
             self.participants.append(
                 BGVParticipant(
-                    t, n, 0, 2029, q, N, i, comm_scheme, RP, SSS, comm_scheme.cypari
+                    t,
+                    n,
+                    0,
+                    2029,
+                    q,
+                    N,
+                    i,
+                    comm_scheme,
+                    RP,
+                    SSS,
+                    comm_scheme.cypari,
                 )
             )
 
@@ -68,11 +80,17 @@ def keyGen(self):
             comek.append(comejk[j][i])
             sk.append(sjk[j][i])
             psk.append(psjk[j][i])
-        step4.append(p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk))
+        step4.append(
+            p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk)
+        )
     print(bool(self.comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0])))
     print(bool(self.comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1])))
     for i in range(len(step4[0][2])):
         print(
-            bool(self.comm_scheme.polynomial.cypari(step4[0][2][i] == step4[1][2][i]))
+            bool(
+                self.comm_scheme.polynomial.cypari(
+                    step4[0][2][i] == step4[1][2][i]
+                )
+            )
         )
     return step4[0]

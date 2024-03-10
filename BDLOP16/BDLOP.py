@@ -1,5 +1,5 @@
 import math
-from BDLOP.CommitmentScheme import CommitmentScheme
+from BDLOP16.CommitmentScheme import CommitmentScheme
 from type.classes import (
     Commit,
     ProofOfOpen,
@@ -10,7 +10,7 @@ import time
 import cypari2
 
 
-class BDLOPZK:
+class BDLOP:
     def __init__(self, comm_scheme: CommitmentScheme):
         self.comm_scheme = comm_scheme
         self.polynomial = comm_scheme.polynomial
@@ -28,7 +28,9 @@ class BDLOPZK:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
@@ -95,18 +97,22 @@ class BDLOPZK:
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
-    def verify_proof_of_zero_opening(self, c1, c2, proof: ProofOfSpecificOpen) -> bool:
+    def verify_proof_of_zero_opening(
+        self, c1, c2, proof: ProofOfSpecificOpen
+    ) -> bool:
         d = self.__d_sigma(proof.t1, proof.t2)
         if not self.__verify_z_bound(proof.z):
             return False
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
@@ -141,7 +147,8 @@ class BDLOPZK:
         )
 
         rhs = self.cypari(
-            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d + u
+            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d
+            + u
         )
         return self.__check_equivalences(lhs, rhs)
 
@@ -224,7 +231,10 @@ class BDLOPZK:
     def verify_proof_of_triple_sum(
         self,
         proof: tuple[
-            ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
         ],
         u: cypari2.gen.Gen,
     ) -> bool:
@@ -265,7 +275,7 @@ def commit_with_r(C: CommitmentScheme, m, r):
     return c
 
 
-def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
+def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_opening(r)
@@ -273,7 +283,7 @@ def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     return open
 
 
-def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
+def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_specific_opening(r)
@@ -281,7 +291,7 @@ def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOPZK):
     return open
 
 
-def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
+def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP, cypari):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g = [comm_scheme.get_challenge() for _ in range(2)]
 
@@ -294,7 +304,7 @@ def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
     return open
 
 
-def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
+def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOP, cypari):
     m1 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     m2 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g1, g2, g3 = [comm_scheme.get_challenge() for _ in range(3)]
@@ -316,7 +326,7 @@ def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOPZK, cypari):
 
 def main():
     comm_scheme = CommitmentScheme()
-    ZK = BDLOPZK(comm_scheme)
+    ZK = BDLOP(comm_scheme)
     proofs = dict()
     clock = time.time()
     for _ in range(100):

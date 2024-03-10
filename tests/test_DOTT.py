@@ -1,6 +1,6 @@
 import pytest
 
-from DOTT.TDCommitmentScheme import TDCommitmentScheme
+from DOTT21.TDCommitmentScheme import TDCommitmentScheme
 from type.classes import CommitOpen
 
 

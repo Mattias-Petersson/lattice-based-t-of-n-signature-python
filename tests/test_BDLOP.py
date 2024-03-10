@@ -1,5 +1,5 @@
 import pytest
-from BDLOP.BDLOPZK import BDLOPZK
+from BDLOP16.BDLOP import BDLOP
 from type.classes import Commit, ProofOfOpenLinear
 
 
@@ -15,7 +15,7 @@ def r_open(comm_scheme):
 
 @pytest.fixture
 def ZK(comm_scheme):
-    return BDLOPZK(comm_scheme)
+    return BDLOP(comm_scheme)
 
 
 def test_proof_of_opening_r_commit(ZK, r_commit):

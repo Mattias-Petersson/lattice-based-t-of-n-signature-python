@@ -1,6 +1,6 @@
 import pytest
 
-from BDLOP.CommitmentScheme import CommitmentScheme
+from BDLOP16.CommitmentScheme import CommitmentScheme
 from type.classes import Commit
 from utils.Polynomial import Polynomial
 

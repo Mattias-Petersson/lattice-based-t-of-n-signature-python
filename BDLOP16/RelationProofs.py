@@ -1,11 +1,13 @@
-from BDLOP.BDLOPZK import BDLOPZK
-from BDLOP.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOP import BDLOP
+from BDLOP16.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpenLinear
 from SecretShare import SecretShare
 
 
 class RelationProver:
-    def __init__(self, ZK: BDLOPZK, comm_scheme: CommitmentScheme, SSS: SecretShare):
+    def __init__(
+        self, ZK: BDLOP, comm_scheme: CommitmentScheme, SSS: SecretShare
+    ):
         self.ZK = ZK
         self.comm_scheme = comm_scheme
         self.SSS = SSS
@@ -85,7 +87,9 @@ class RelationProver:
         for i in range(len(proofs1)):
             combi = self.comm_scheme.commit(Commit(bis[i], r0))
             proof, *rest = proofs1[i]
-            proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            proof = tuple[
+                ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+            ](
                 ProofOfOpenLinear(c, g, proof=proof)
                 for c, g, proof in [
                     [comsis[i], a, proof[0]],
@@ -162,7 +166,10 @@ class RelationProver:
             return False
         proof, *rest = proof2
         proof = tuple[
-            ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
+            ProofOfOpenLinear,
         ](
             ProofOfOpenLinear(c, g, proof=proof)
             for c, g, proof in [
