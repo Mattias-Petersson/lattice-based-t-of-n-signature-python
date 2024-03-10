@@ -1,3 +1,6 @@
+type TN = tuple[int, int]
+
+
 class Commit:
     """
     A commit consisting of a message m and a randomness r.

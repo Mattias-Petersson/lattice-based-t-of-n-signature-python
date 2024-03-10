@@ -59,8 +59,8 @@ class BGVParticipant:
         peiprime = self.comm_scheme.r_commit()
         self.comsi = self.comm_scheme.commit(Commit(self.siprime, psiprime))
         self.comei = self.comm_scheme.commit(Commit(self.eiprime, peiprime))
-        sij = self.SSS.share_poly(self.siprime, self.n, self.t, self.q)
-        eij = self.SSS.share_poly(self.eiprime, self.n, self.t, self.q)
+        sij = self.SSS.share_poly(self.siprime)
+        eij = self.SSS.share_poly(self.eiprime)
         psij = []
         peij = []
         comsij = []
