@@ -1,7 +1,7 @@
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpenLinear
-from SecretShare import SecretShare
+from SecretSharing.SecretShare import SecretShare
 
 
 class RelationProver:

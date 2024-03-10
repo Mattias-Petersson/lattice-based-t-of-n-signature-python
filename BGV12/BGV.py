@@ -2,7 +2,7 @@ from BDLOP16.BDLOP import BDLOP
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from BDLOP16.RelationProofs import RelationProver
 from BGV12.BGVParticipant import BGVParticipant
-from SecretShare import SecretShare
+from SecretSharing.SecretShare import SecretShare
 
 
 class BGV:

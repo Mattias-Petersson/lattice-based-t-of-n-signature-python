@@ -1,6 +1,6 @@
 import pytest
 
-from SecretShare import SecretShare
+from SecretSharing.SecretShare import SecretShare
 
 
 @pytest.fixture

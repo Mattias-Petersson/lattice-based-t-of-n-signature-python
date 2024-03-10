@@ -1,6 +1,6 @@
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from BDLOP16.RelationProofs import RelationProver
-from SecretShare import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, CommitOpen, ProofOfOpenLinear
 from utils.Polynomial import Polynomial
 
