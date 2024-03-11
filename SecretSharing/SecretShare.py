@@ -54,16 +54,3 @@ class SecretShare:
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.reconstruct(i, x_arr) for i in polys]
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
-
-    def test(self):
-        PH = Polynomial(4, 2**32 - 527)
-        ret_arr = self.share_poly(self.cypari.Pol("x^3+21*x^2+x^1+1"))
-        print(ret_arr[:2])
-        print(len(ret_arr[:2]))
-        print(PH.in_rq(self.reconstruct_poly(ret_arr, [1, 2])))
-
-
-if __name__ == "__main__":
-    c = CommitmentScheme()
-    s = SecretShare((2, 4), c.q)
-    s.test()
