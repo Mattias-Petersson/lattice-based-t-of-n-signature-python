@@ -20,10 +20,10 @@ class Polynomial:
         q: int = 2**32 - 527,
     ):
         self.cypari: cypari2.pari_instance.Pari = cypari2.Pari()
+        self.cypari.allocatemem(10**10)
+
         if not self.cypari.isprime(q):
             raise ValueError("q needs to be prime.")
-        if not math.log2(N).is_integer():
-            raise ValueError("N needs to be a power of two.")
 
         self.N = N
         self.q = q
