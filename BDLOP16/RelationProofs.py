@@ -5,9 +5,7 @@ from SecretSharing.SecretShare import SecretShare
 
 
 class RelationProver:
-    def __init__(
-        self, ZK: BDLOP, comm_scheme: CommitmentScheme, SSS: SecretShare
-    ):
+    def __init__(self, ZK: BDLOP, comm_scheme: CommitmentScheme, SSS: SecretShare):
         self.ZK = ZK
         self.comm_scheme = comm_scheme
         self.SSS = SSS
@@ -87,9 +85,7 @@ class RelationProver:
         for i in range(len(proofs1)):
             combi = self.comm_scheme.commit(Commit(bis[i], r0))
             proof, *rest = proofs1[i]
-            proof = tuple[
-                ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
-            ](
+            proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
                 ProofOfOpenLinear(c, g, proof=proof)
                 for c, g, proof in [
                     [comsis[i], a, proof[0]],
@@ -191,8 +187,38 @@ class RelationProver:
             return False
         return True
 
-    def prove_ds(self):
-        raise RuntimeError("not implemented")
+    def prove_ds(self, p_si, p_Ei, u, lagrange, p):
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        proof1 = self.ZK.proof_of_opening(p_si)
+        proof2 = self.ZK.proof_of_opening(p_Ei)
+        proof3_fac = self.comm_scheme.cypari(lagrange * u)
+        proof3 = self.ZK.proof_of_sum(p_si, p_Ei, r0, proof3_fac, p, 1)
+        return (proof1, proof2, proof3, proof3_fac)
 
-    def verify_ds(self):
-        raise RuntimeError("not implemented")
+    def verify_ds(self, proof1, proof2, proof3, proof3_fac, p, com_si, com_Ei, ds):
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        com_ds = self.comm_scheme.commit(Commit(ds, r0))
+        if not self.ZK.verify_proof_of_opening(com_si, proof1):
+            return False
+        if not self.ZK.verify_proof_of_opening(com_Ei, proof2):
+            return False
+        proof, *rest = proof3
+        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [com_si, proof3_fac, proof[0]],
+                [com_Ei, p, proof[1]],
+                [com_ds, 1, proof[2]],
+            ]
+        )
+        if not self.ZK.verify_proof_of_sum(proof, *rest):
+            return False
+        return True

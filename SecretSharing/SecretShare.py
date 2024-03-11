@@ -47,7 +47,7 @@ class SecretShare:
         Creates a share of polynomials for each participant.
         """
         shares = [self.__share(i) for i in self.polynomial.pol_to_arr(poly)]
-        return [list(col) for col in zip(*shares)]
+        return [self.cypari.Pol(list(col)) for col in zip(*shares)]
 
     def reconstruct_poly(self, res_arrs, x_arr):
         rec_arr = [self.polynomial.pol_to_arr(i) for i in res_arrs]

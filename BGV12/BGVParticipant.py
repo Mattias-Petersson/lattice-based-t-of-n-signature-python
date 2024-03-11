@@ -74,9 +74,7 @@ class BGVParticipant:
             peij.append(pe)
             comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
             bij.append(self.cypari(self.a * sij[i] + self.p * eij[i]))
-        proof_sk = self.RP.prove_sk(
-            psiprime, peiprime, psij, peij, self.a, self.p
-        )
+        proof_sk = self.RP.prove_sk(psiprime, peiprime, psij, peij, self.a, self.p)
         return (
             self.comsi,
             self.comei,
@@ -161,9 +159,7 @@ class BGVParticipant:
         com_m = self.comm_scheme.commit(Commit(m, pm))
         u = self.comm_scheme.cypari(self.a * r + self.p * eprime)
         v = self.comm_scheme.cypari(self.b * r + self.p * ebis + m)
-        proof_ctx = self.RP.prove_enc(
-            pr, pm, peprime, pebis, self.a, self.b, self.p
-        )
+        proof_ctx = self.RP.prove_enc(pr, pm, peprime, pebis, self.a, self.b, self.p)
         return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
 
     def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis):
@@ -184,6 +180,11 @@ class BGVParticipant:
         return ptx
 
     def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
+        if not self.RP.verify_enc(
+            *proof_ctx, self.a, self.b, self.p, u, v, com_r, com_m, com_eprime, com_ebis
+        ):
+            print("ENC DOES NOT VERIFY")
+            return (True, None, None, None, None)
         lagrange = 0
         for j in U:
             if j != self.i:
@@ -193,13 +194,21 @@ class BGVParticipant:
         d_i = self.cypari(m_i + self.p * E_i)
         pE_i = self.comm_scheme.r_commit()
         com_Ei = self.comm_scheme.commit(Commit(E_i, pE_i))
-        proof_dsi = 0  # TODO
+        proof_dsi = self.RP.prove_ds(self.ski[1], pE_i, u, lagrange, self.p)
         return (
-            d_i,
+            True,
             proof_dsi,
-            com_Ei,
             self.comm_scheme.commit(Commit(*self.ski)),
+            com_Ei,
+            d_i,
         )
 
-    def comb(self):
-        raise RuntimeError("not implemented")
+    def comb(self, u, v, t_decs):
+        for i in t_decs:
+            if not self.RP.verify_ds(*i[1], self.p, i[2], i[3], i[4]):
+                return False
+        sum_ds = 0
+        for i in t_decs:
+            sum_ds = self.cypari(sum_ds + i[4])
+        ptx = self.cypari(v - sum_ds)
+        return ptx
