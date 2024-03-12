@@ -38,7 +38,7 @@ class SecretShare:
         return [self.cypari(random_polynomial)(x=i + 1) for i in range(self.n)]
 
     def reconstruct(self, res_arr, x_arr):
-        norm_sum = lambda j, i: j / (j - i) if i != j else 0
+        norm_sum = lambda j, i: j * self.polynomial.inversion[(j - i)] if i != j else 0
         sum_arr = [sum(norm_sum(j, i) for j in x_arr) for i in x_arr]
         return sum([int(s) * r for s, r in zip(sum_arr, res_arr)])
 

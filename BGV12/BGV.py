@@ -101,8 +101,12 @@ class BGV:
         t_decs = []
         for i in range(1, self.t + 1):
             t_decs.append(self.participants[i].t_dec(*enc, range(2, self.t + 2)))
+        print(len(t_decs))
         ptx = self.participants[0].comb(enc[0], enc[1], t_decs)
-        print(ptx)
+        ptx = self.comm_scheme.cypari.liftall(ptx) * self.comm_scheme.cypari.Mod(
+            1, 2029
+        )
+        print("ptx: ", ptx)
         print(bool(self.comm_scheme.polynomial.cypari(m == ptx)))
         return bool(self.comm_scheme.polynomial.cypari(m == ptx))
 
