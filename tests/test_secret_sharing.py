@@ -53,7 +53,7 @@ def test_random_order(secret_share, p1_r, cypari):
     """
     p1, r = p1_r
     indices = np.random.choice(
-        range(secret_share.n), size=secret_share.t, replace=False
+        range(secret_share.polynomial.N), size=secret_share.t, replace=False
     )
     r = [r[i] for i in indices]
     p2 = secret_share.reconstruct_poly(r)

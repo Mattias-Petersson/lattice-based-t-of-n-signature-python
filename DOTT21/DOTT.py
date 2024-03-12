@@ -1,11 +1,12 @@
 import math
 import cypari2
 from type.classes import Commit, CommitOpen
+import numpy as np
 
 from utils.Polynomial import Polynomial
 
 
-class TDCommitmentScheme:
+class DOTT:
     """
     A trapdoor commitment scheme. q and n are constant values no matter what
     level of NIST security level we use in accordance with Dilithium
@@ -21,6 +22,9 @@ class TDCommitmentScheme:
     """
 
     def __init__(self):
+        def __sigma(args) -> int:
+            return 0
+
         self.N: int = 256
         self.q: int = 8380417
         self.polynomial = Polynomial(self.N, self.q)
@@ -30,10 +34,11 @@ class TDCommitmentScheme:
         call it kappa to be consistent across files."""
         self.kappa = 49
 
-        self.s_bar = 0  # Not correct
-        self.s = 0  # Not correct
-        self.k, self.l = 6, 5
-        self.w = 0  # Not correct.
+        self.s = __sigma(self.N)
+        self.s_bar = __sigma(self.N ** (3 / 2) * math.log2(self.N))
+        __log2q = math.ceil(math.log2(self.q))
+        self.k, self.l = 6, __log2q
+        self.w = __log2q
         self.B = self.__make_B()
         self.Â = self.__make_A((2, self.l + 2 * self.w))
 
@@ -47,7 +52,7 @@ class TDCommitmentScheme:
         """
         A = self.polynomial.uniform_array(n=shape)
         A[0][0] = self.polynomial.challenge(self.kappa)
-        A[1][0], A[1][1] = 0, 1
+        A[1][0], A[1][1] = self.cypari.Pol("0"), self.cypari.Pol("1")
         return A
 
     def __make_B(self) -> int:
@@ -71,7 +76,6 @@ class TDCommitmentScheme:
         if bound:
             while self.polynomial.l2_norm(r) > self.B:
                 r = arr()
-            return r
         return r
 
     def __Ar_with_msg(
@@ -119,11 +123,36 @@ class TDCommitmentScheme:
         return bool(self.cypari(com.c == rhs))
 
     def tc_gen(self):
+        """
+        Keygen with a trapdoor. Samples an R from a Gaussian distribution
+        of shape (l, 2w) and outputs it as the trapdoor td. The commitment
+        key is Â= [A | (G - Ar)] or tck. Both of these are returned as a tuple
+        from the method.
+
+        """
+
+        def make_G() -> list:
+            concat = lambda lst1, lst2: self.cypari.concat(lst1, lst2)
+            range_w = range(self.w)
+            poly_one = self.cypari.Pol("1")
+
+            powers_of_two_pol = self.cypari([i**2 for i in range_w] * poly_one)
+            zeroes_pol = self.cypari([0 for _ in range_w] * poly_one)
+
+            row_one = concat(powers_of_two_pol, zeroes_pol)
+            row_two = concat(zeroes_pol, powers_of_two_pol)
+
+            return self.cypari.matrix(2, 2 * self.w, (*row_one, *row_two))
+
         A_ol = self.__make_A((2, self.l))
         R = self.polynomial.gaussian_array(
             (self.l, 2 * self.w), sigma=self.s_bar
         )
-        return (0, 0)
+        G = make_G()
+        Ar = self.cypari(A_ol * R)
+        rhs = self.cypari(G - Ar)
+        Â = self.cypari.concat(A_ol, G - Ar)
+        return (R, Â)
 
     def t_com(self) -> list[cypari2.gen.Gen]:
         """
@@ -139,8 +168,9 @@ class TDCommitmentScheme:
 
 
 if __name__ == "__main__":
-    b = TDCommitmentScheme()
+    b = DOTT()
     com = b.make_commit()
     test = b.com(com)
     test2 = b.open(CommitOpen(test, 0, commit=com))
+    b.tc_gen()
     print(test2)
