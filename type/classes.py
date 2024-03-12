@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+
 type TN = tuple[int, int]
 
 
@@ -47,3 +50,6 @@ class ProofOfOpenLinear(ProofOfOpen):
             super().__init__(proof.z, proof.t)
         else:
             super().__init__(z, t)
+
+
+SecretSharePoly = namedtuple("SecretShare", ["x", "p"])
