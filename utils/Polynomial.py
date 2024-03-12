@@ -96,7 +96,7 @@ class Polynomial:
             )
         else:
             func = lambda n, sigma: self.cypari.matrix(
-                *n, self.__gaussian_list(n[0] * n[1], sigma)
+                *n, lst_helper(n[0] * n[1], sigma)
             )
         return func
 
