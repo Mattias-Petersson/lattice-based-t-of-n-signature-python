@@ -1,7 +1,6 @@
 import math
 import cypari2
 from type.classes import Commit, CommitOpen
-import numpy as np
 
 from utils.Polynomial import Polynomial
 
@@ -22,8 +21,8 @@ class DOTT:
     """
 
     def __init__(self):
-        def __sigma(args) -> int:
-            return 0
+        def __theta(args) -> int:
+            return 1
 
         self.N: int = 256
         self.q: int = 8380417
@@ -34,10 +33,10 @@ class DOTT:
         call it kappa to be consistent across files."""
         self.kappa = 49
 
-        self.s = __sigma(self.N)
-        self.s_bar = __sigma(self.N ** (3 / 2) * math.log2(self.N))
+        self.s = __theta(self.N)
+        self.s_bar = __theta(self.N ** (3 / 2) * math.log2(self.N))
         __log2q = math.ceil(math.log2(self.q))
-        self.k, self.l = 6, __log2q
+        self.k, self.l = 6, 5
         self.w = __log2q
         self.B = self.__make_B()
         self.Â = self.__make_A((2, self.l + 2 * self.w))
@@ -68,14 +67,16 @@ class DOTT:
             * (math.sqrt(self.l + 2 * self.w) + 1)
         )
 
-    def __make_r(
-        self, shape: int | tuple[int, int], sigma, bound: int | None = None
-    ) -> cypari2.gen.Gen:
-        arr = lambda: self.polynomial.gaussian_array(shape, sigma)
-        r = arr()
-        if bound:
-            while self.polynomial.l2_norm(r) > self.B:
-                r = arr()
+    def __make_r(self, n: int, sigma, bound: int) -> cypari2.gen.Gen:
+        arr2 = lambda: self.polynomial.gaussian_element(sigma)
+        r = []
+        while len(r) < n:
+            temp = arr2()
+            if (
+                self.polynomial.l2_norm(self.polynomial.pol_to_arr(temp))
+                <= bound
+            ):
+                r.append(temp)
         return r
 
     def __Ar_with_msg(
@@ -150,7 +151,6 @@ class DOTT:
         )
         G = make_G()
         Ar = self.cypari(A_ol * R)
-        rhs = self.cypari(G - Ar)
         Â = self.cypari.concat(A_ol, G - Ar)
         return (R, Â)
 
