@@ -21,8 +21,22 @@ class DOTT:
     """
 
     def __init__(self):
-        def __theta(args) -> int:
-            return 1
+        def make_B() -> int:
+            """
+            Bound B for verification. Needs to be large enough to accomodate
+            valid commits, and small in comparison to q.
+
+            In the paper, B can be set to C*s*sqrt(N) * (sqrt(l + 2w) + 1) in
+            the correctness property. It can also be instantiated as
+            Theta(N^2 * log^3(N)). This method does the former of the two.
+            """
+            C = 1 / math.sqrt(2 * math.pi)
+            return int(
+                C
+                * self.s
+                * math.sqrt(self.N)
+                * (math.sqrt(self.l + 2 * self.w) + 1)
+            )
 
         self.N: int = 256
         self.q: int = 8380417
@@ -33,12 +47,13 @@ class DOTT:
         call it kappa to be consistent across files."""
         self.kappa = 49
 
-        self.s = __theta(self.N)
-        self.s_bar = __theta(self.N ** (3 / 2) * math.log2(self.N))
+        self.s = self.N ** (3 / 2) * math.log2(self.N)
+        self.s_bar = self.N
         __log2q = math.ceil(math.log2(self.q))
         self.k, self.l = 6, 5
         self.w = __log2q
-        self.B = self.__make_B()
+
+        self.B = make_B()
         self.Â = self.__make_A((2, self.l + 2 * self.w))
 
     def __make_A(self, shape: tuple[int, int]) -> cypari2.gen.Gen:
@@ -53,19 +68,6 @@ class DOTT:
         A[0][0] = self.polynomial.challenge(self.kappa)
         A[1][0], A[1][1] = self.cypari.Pol("0"), self.cypari.Pol("1")
         return A
-
-    def __make_B(self) -> int:
-        """
-        Bound B for verification. Needs to be large enough to accomodate
-        valid commits, and small in comparison to q.
-        """
-        C = 1 / math.sqrt(2 * math.pi)
-        return int(
-            C
-            * self.s
-            * math.sqrt(self.N)
-            * (math.sqrt(self.l + 2 * self.w) + 1)
-        )
 
     def __make_r(self, n: int, sigma, bound: int) -> cypari2.gen.Gen:
         arr2 = lambda: self.polynomial.gaussian_element(sigma)
@@ -119,6 +121,9 @@ class DOTT:
         Returns:
         True if the commitment was valid, False otherwise.
         """
+        for r in com.r:
+            if self.polynomial.l2_norm(self.cypari.liftall(r)) > self.B:
+                return False
         Ar, zeroes = self.__Ar_with_msg(com)
         rhs = self.cypari(Ar + zeroes)
         return bool(self.cypari(com.c == rhs))
