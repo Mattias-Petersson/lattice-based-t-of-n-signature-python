@@ -34,7 +34,7 @@ class Polynomial:
         randomized_coeffs = np.random.randint(bound, size=self.N)
         return self.in_rq(self.cypari.Pol(randomized_coeffs))
 
-    def __gaussian_element(self, sigma: int) -> cypari2.gen.Gen:
+    def gaussian_element(self, sigma: int) -> cypari2.gen.Gen:
         """
         TODO: Verify that this is behaving similar to a Gaussian distribution.
         """
@@ -46,7 +46,7 @@ class Polynomial:
         return [self.uniform_element(bound) for _ in range(n)]
 
     def __gaussian_list(self, n: int, sigma: int):
-        return [self.__gaussian_element(sigma) for _ in range(n)]
+        return [self.gaussian_element(sigma) for _ in range(n)]
 
     def in_rq(self, p: cypari2.gen.Gen):
         """
@@ -68,19 +68,36 @@ class Polynomial:
         fx = f"x^{self.N} + 1"
         return self.cypari.Pol(fx)
 
+    def __shape_helper(
+        self, n: int | tuple[int, int], is_uniform: bool = False
+    ):
+        lst_helper = lambda n, bound: (
+            self.__uniform_list(n, bound)
+            if is_uniform
+            else self.__gaussian_list(n, bound)
+        )
+        element_helper = lambda bound: (
+            self.uniform_element(bound)
+            if is_uniform
+            else self.gaussian_element(bound)
+        )
+        if isinstance(n, int):
+            func = lambda n, sigma: (
+                element_helper(sigma)
+                if n == 1
+                else self.cypari.vector(n, lst_helper(n, sigma))
+            )
+        else:
+            func = lambda n, sigma: self.cypari.matrix(
+                *n, self.__gaussian_list(n[0] * n[1], sigma)
+            )
+        return func
+
     def uniform_array(
         self, n: int | tuple[int, int], bound: int = 0
     ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
-        if isinstance(n, int):
-            return (
-                self.uniform_element(bound)
-                if n == 1
-                else self.cypari.vector(n, self.__uniform_list(n, bound))
-            )
-        else:
-            return self.cypari.matrix(
-                *n, self.__uniform_list(n[0] * n[1], bound)
-            )
+        func = self.__shape_helper(n, is_uniform=True)
+        return func(n, sigma=bound)
 
     def uniform_bounded_array(
         self, n: int, bound: int
@@ -90,16 +107,8 @@ class Polynomial:
     def gaussian_array(
         self, n: int | tuple[int, int], sigma: int
     ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
-        if isinstance(n, int):
-            return (
-                self.__gaussian_element(sigma)
-                if n == 1
-                else self.cypari.vector(n, self.__gaussian_list(n, sigma))
-            )
-        else:
-            return self.cypari.matrix(
-                *n, self.__uniform_list(n[0] * n[1], sigma)
-            )
+        func = self.__shape_helper(n)
+        return func(n, sigma)
 
     def ones(self, n: int) -> list[cypari2.gen.Gen]:
         return self.in_rq(self.cypari.matid(n))
@@ -124,7 +133,7 @@ class Polynomial:
         gen = Generator(PCG64(seed))
         bound = self.N // 4
         indices = gen.choice(range(bound), size=kappa, replace=False)
-        coeffs = gen.choice([" + ", " - "], size=kappa)
+        coeffs = gen.choice(["+", "-"], size=kappa)
         pol = ""
         for i, j in zip(coeffs, indices):
             pol += i + f"x^{j}"
