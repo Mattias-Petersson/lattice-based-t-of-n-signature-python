@@ -118,9 +118,9 @@ class RelationProver:
         proof1 = self.ZK.proof_of_sum(p_r, p_eprime, r0, a, p, 1)
         proof2 = self.ZK.proof_of_triple_sum(p_r, p_ebis, p_m, r0, b, p, 1, 1)
         proof3 = self.ZK.proof_of_opening(p_r)
-        proof4 = self.ZK.proof_of_opening(p_eprime)
-        proof5 = self.ZK.proof_of_opening(p_ebis)
-        proof6 = self.ZK.proof_of_opening(p_m)
+        proof4 = self.ZK.proof_of_opening(p_m)
+        proof5 = self.ZK.proof_of_opening(p_eprime)
+        proof6 = self.ZK.proof_of_opening(p_ebis)
         return (proof1, proof2, proof3, proof4, proof5, proof6)
 
     def verify_enc(
@@ -159,7 +159,6 @@ class RelationProver:
             ]
         )
         if not self.ZK.verify_proof_of_sum(proof, *rest):
-            print("fails1")
             return False
         proof, *rest = proof2
         proof = tuple[
@@ -178,7 +177,6 @@ class RelationProver:
         )
         print(len(proof))
         if not self.ZK.verify_proof_of_triple_sum(proof, *rest):
-            print("fails2")
             return False
         if not self.ZK.verify_proof_of_opening(com_r[0][0], proof3):
             return False

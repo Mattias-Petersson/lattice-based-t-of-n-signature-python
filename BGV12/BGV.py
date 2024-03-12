@@ -99,10 +99,10 @@ class BGV:
         print(m)
         enc = self.participants[0].enc(m)
         t_decs = []
-        for i in range(1, self.t + 1):
-            t_decs.append(self.participants[i].t_dec(*enc, range(2, self.t + 2)))
+        for i in range(0, self.t):
+            t_decs.append(self.participants[i].t_dec(*enc, range(1, self.t + 1)))
         print(len(t_decs))
-        ptx = self.participants[0].comb(enc[0], enc[1], t_decs)
+        ptx = self.participants[0].comb(enc[1], t_decs)
         ptx = self.comm_scheme.cypari.liftall(ptx) * self.comm_scheme.cypari.Mod(
             1, 2029
         )

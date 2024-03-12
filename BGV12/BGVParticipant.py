@@ -126,7 +126,6 @@ class BGVParticipant:
                     comejk[i],
                 ):
                     raise RuntimeError(str(i))
-
         b = 0
         si = 0
         psi = 0
@@ -199,7 +198,7 @@ class BGVParticipant:
             com_ebis,
         ):
             print("fail")
-            # raise ValueError()
+            raise ValueError()
         lagrange = 0
         for j in U:
             if j != self.i:
@@ -217,7 +216,7 @@ class BGVParticipant:
             d_i,
         )
 
-    def comb(self, u, v, t_decs):
+    def comb(self, v, t_decs):
         for i in t_decs:
             if not self.RP.verify_ds(*(i[0]), self.p, i[1], i[2], i[3]):
                 return False
