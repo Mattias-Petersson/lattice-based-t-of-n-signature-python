@@ -27,6 +27,13 @@ class Polynomial:
 
         self.N = N
         self.q = q
+        self.inversion = dict()
+        self.inversion[1] = 1
+        self.inversion[2] = 2147483385
+        self.inversion[3] = 1431655590
+        self.inversion[-1] = -1
+        self.inversion[-2] = -2147483385
+        self.inversion[-3] = -1431655590
 
     def uniform_element(self, bound: int = 0) -> cypari2.gen.Gen:
         if bound == 0:
@@ -59,9 +66,7 @@ class Polynomial:
         The polynomial that is congruent to the argument for the ring.
         """
         return self.cypari(
-            p
-            * self.cypari.Mod(1, self.q)
-            * self.cypari.Mod(1, self.basis_poly())
+            p * self.cypari.Mod(1, self.q) * self.cypari.Mod(1, self.basis_poly())
         )
 
     def basis_poly(self) -> cypari2.gen.Gen:
@@ -78,13 +83,9 @@ class Polynomial:
                 else self.cypari.vector(n, self.__uniform_list(n, bound))
             )
         else:
-            return self.cypari.matrix(
-                *n, self.__uniform_list(n[0] * n[1], bound)
-            )
+            return self.cypari.matrix(*n, self.__uniform_list(n[0] * n[1], bound))
 
-    def uniform_bounded_array(
-        self, n: int, bound: int
-    ) -> list[cypari2.gen.Gen]:
+    def uniform_bounded_array(self, n: int, bound: int) -> list[cypari2.gen.Gen]:
         return self.cypari.vector(n, self.__uniform_list(n, bound))
 
     def gaussian_array(
@@ -97,9 +98,7 @@ class Polynomial:
                 else self.cypari.vector(n, self.__gaussian_list(n, sigma))
             )
         else:
-            return self.cypari.matrix(
-                *n, self.__uniform_list(n[0] * n[1], sigma)
-            )
+            return self.cypari.matrix(*n, self.__uniform_list(n[0] * n[1], sigma))
 
     def ones(self, n: int) -> list[cypari2.gen.Gen]:
         return self.in_rq(self.cypari.matid(n))
@@ -111,9 +110,7 @@ class Polynomial:
         pariVec = self.cypari.Vec(self.cypari.liftall(pol))
         return gen_to_python(pariVec)
 
-    def challenge(
-        self, kappa: int, seed: list[int] | None = None
-    ) -> cypari2.gen.Gen:
+    def challenge(self, kappa: int, seed: list[int] | None = None) -> cypari2.gen.Gen:
         """
         Provides a polynomial in the ring R_q with an l_inf norm of one.
         Additionally, it has a l_1 norm of kappa and should be small in

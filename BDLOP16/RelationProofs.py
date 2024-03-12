@@ -159,6 +159,7 @@ class RelationProver:
             ]
         )
         if not self.ZK.verify_proof_of_sum(proof, *rest):
+            print("fails1")
             return False
         proof, *rest = proof2
         proof = tuple[
@@ -175,15 +176,17 @@ class RelationProver:
                 [com_v, 1, proof[3]],
             ]
         )
+        print(len(proof))
         if not self.ZK.verify_proof_of_triple_sum(proof, *rest):
+            print("fails2")
             return False
-        if not self.ZK.verify_proof_of_opening(com_r, proof3):
+        if not self.ZK.verify_proof_of_opening(com_r[0][0], proof3):
             return False
-        if not self.ZK.verify_proof_of_opening(com_m, proof4):
+        if not self.ZK.verify_proof_of_opening(com_m[0][0], proof4):
             return False
-        if not self.ZK.verify_proof_of_opening(com_eprime, proof5):
+        if not self.ZK.verify_proof_of_opening(com_eprime[0][0], proof5):
             return False
-        if not self.ZK.verify_proof_of_opening(com_ebis, proof6):
+        if not self.ZK.verify_proof_of_opening(com_ebis[0][0], proof6):
             return False
         return True
 
@@ -206,9 +209,9 @@ class RelationProver:
             self.comm_scheme.cypari.Pol("0"),
         ]
         com_ds = self.comm_scheme.commit(Commit(ds, r0))
-        if not self.ZK.verify_proof_of_opening(com_si, proof1):
+        if not self.ZK.verify_proof_of_opening(com_si[0][0], proof1):
             return False
-        if not self.ZK.verify_proof_of_opening(com_Ei, proof2):
+        if not self.ZK.verify_proof_of_opening(com_Ei[0][0], proof2):
             return False
         proof, *rest = proof3
         proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
