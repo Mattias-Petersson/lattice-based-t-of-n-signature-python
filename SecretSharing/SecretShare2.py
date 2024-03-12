@@ -37,7 +37,7 @@ class SecretShare:
         random_polynomial = self.__generatePoly(s)
         return [self.cypari(random_polynomial)(x=i + 1) for i in range(self.n)]
 
-    def reconstruct(self, res_arr, x_arr):
+    def __reconstruct(self, res_arr, x_arr):
         norm_sum = lambda j, i: j / (j - i) if i != j else 0
         sum_arr = [sum(norm_sum(j, i) for j in x_arr) for i in x_arr]
         return sum([int(s) * r for s, r in zip(sum_arr, res_arr)])
@@ -56,14 +56,5 @@ class SecretShare:
         contributors = [i.x for i in r]
         rec_arr = [self.polynomial.pol_to_arr(i.p) for i in r]
         polys = [list(col) for col in zip(*rec_arr)]
-        ret_arr = [self.reconstruct(i, contributors) for i in polys]
+        ret_arr = [self.__reconstruct(i, contributors) for i in polys]
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
-
-
-if __name__ == "__main__":
-    c = CommitmentScheme()
-    s = SecretShare((2, 4), c.q)
-    cyp = cypari2.Pari()
-    pol = cyp.Pol("x^4 + 3*x^3 + x^2 + 1")
-    r = s.share_poly(pol)
-    s.reconstruct_poly(r[0])
