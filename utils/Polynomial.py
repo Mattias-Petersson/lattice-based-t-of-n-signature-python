@@ -49,12 +49,6 @@ class Polynomial:
         poly = self.cypari.round(self.cypari.Pol(unrounded))
         return self.in_rq(poly)
 
-    def __uniform_list(self, n: int, bound: int = 0):
-        return [self.uniform_element(bound) for _ in range(n)]
-
-    def __gaussian_list(self, n: int, sigma: int):
-        return [self.gaussian_element(sigma) for _ in range(n)]
-
     def in_rq(self, p: cypari2.gen.Gen):
         """
         Returns a polynomial congruent in R_q to the one sent in.
@@ -75,53 +69,58 @@ class Polynomial:
         fx = f"x^{self.N} + 1"
         return self.cypari.Pol(fx)
 
-    def __shape_helper(
-        self, n: int | tuple[int, int], is_uniform: bool = False
-    ):
-        lst_helper = lambda n, bound: (
-            self.__uniform_list(n, bound)
-            if is_uniform
-            else self.__gaussian_list(n, bound)
-        )
-        element_helper = lambda bound: (
-            self.uniform_element(bound)
-            if is_uniform
-            else self.gaussian_element(bound)
-        )
+    def __shape_helper(self, n: int | tuple[int, int], func_one_element):
+        """
+        What we want to return will depend on n. If n is an integer, we want to
+        return a single element if n = 1, an array if n!=1, and a matrix of
+        specified dimension if n is a tuple. This helper method takes in
+        functions to get the element and returns the proper structure.
+        """
+        func_mult = lambda n, bound: [func_one_element(bound) for _ in range(n)]
         if isinstance(n, int):
-            func = lambda n, sigma: (
-                element_helper(sigma)
+            return lambda n, bound: (
+                func_one_element(bound)
                 if n == 1
-                else self.cypari.vector(n, lst_helper(n, sigma))
+                else self.cypari.vector(n, func_mult(n, bound))
             )
-        else:
-            func = lambda n, sigma: self.cypari.matrix(
-                *n, lst_helper(n[0] * n[1], sigma)
-            )
-        return func
+        return lambda n, bound: self.cypari.matrix(
+            *n, func_mult(n[0] * n[1], bound)
+        )
 
     def uniform_array(
         self, n: int | tuple[int, int], bound: int = 0
     ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
-        func = self.__shape_helper(n, is_uniform=True)
-        return func(n, sigma=bound)
-
-    def uniform_bounded_array(
-        self, n: int, bound: int
-    ) -> list[cypari2.gen.Gen]:
-        return self.cypari.vector(n, self.__uniform_list(n, bound))
+        func = self.__shape_helper(n, self.uniform_element)
+        return func(n, bound)
 
     def gaussian_array(
         self, n: int | tuple[int, int], sigma: int
     ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
-        func = self.__shape_helper(n)
+        func = self.__shape_helper(n, self.gaussian_element)
+        return func(n, sigma)
+
+    def guassian_bounded_array(
+        self, n: int | tuple[int, int], sigma: int, bound: int
+    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
+        def bounded_element(sigma):
+            r = self.gaussian_element(sigma)
+            while self.l2_norm(r) > bound:
+                r = self.gaussian_element(sigma)
+            return r
+
+        func = self.__shape_helper(n, bounded_element)
         return func(n, sigma)
 
     def ones(self, n: int) -> list[cypari2.gen.Gen]:
         return self.in_rq(self.cypari.matid(n))
 
-    def l2_norm(self, list) -> float:
-        return math.sqrt(sum([i**2 % self.q for i in list]))
+    def l2_norm(self, poly: cypari2.gen.Gen) -> float:
+        """
+        Takes the l2 norm of a polynomial by first converting it to
+        an integer array.
+        """
+        lst = self.pol_to_arr(poly)
+        return math.sqrt(sum([i**2 % self.q for i in lst]))
 
     def pol_to_arr(self, pol) -> list[int]:
         pariVec = self.cypari.Vec(self.cypari.liftall(pol))

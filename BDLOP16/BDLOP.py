@@ -19,8 +19,7 @@ class BDLOP:
     def __verify_z_bound(self, z) -> bool:
         bound = int(4 * self.comm_scheme.sigma * math.sqrt(self.comm_scheme.N))
         for i in z:
-            array_coeffs = self.polynomial.pol_to_arr(i)
-            if self.polynomial.l2_norm(array_coeffs) >= bound:
+            if self.polynomial.l2_norm(i) >= bound:
                 return False
         return True
 
@@ -28,7 +27,9 @@ class BDLOP:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(proof.z))
+        lhs = self.cypari(
+            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        )
         rhs = self.cypari(proof.t + (d * proof.c[0][0]))
         return bool(self.cypari(lhs == rhs))
 
@@ -95,18 +96,22 @@ class BDLOP:
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
-    def verify_proof_of_zero_opening(self, c1, c2, proof: ProofOfSpecificOpen) -> bool:
+    def verify_proof_of_zero_opening(
+        self, c1, c2, proof: ProofOfSpecificOpen
+    ) -> bool:
         d = self.__d_sigma(proof.t1, proof.t2)
         if not self.__verify_z_bound(proof.z):
             return False
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
-            self.__make_rhs(t, d, c) for t, c in zip((proof.t1, proof.t2), (c1, c2))
+            self.__make_rhs(t, d, c)
+            for t, c in zip((proof.t1, proof.t2), (c1, c2))
         )
         return self.__check_equivalences(lhs, rhs)
 
@@ -141,7 +146,8 @@ class BDLOP:
         )
 
         rhs = self.cypari(
-            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d + u
+            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d
+            + u
         )
         return self.__check_equivalences(lhs, rhs)
 

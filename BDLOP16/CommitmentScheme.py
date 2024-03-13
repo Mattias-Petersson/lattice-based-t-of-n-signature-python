@@ -66,16 +66,11 @@ class CommitmentScheme:
         return Ar, zeroes_message
 
     def r_commit(self) -> list:
-        return self.polynomial.uniform_bounded_array(self.k, self.sbeta + 1)
+        return self.polynomial.uniform_array(self.k, self.sbeta + 1)
 
     def r_open(self) -> list:
         bound = math.floor(4 * self.sigma * math.sqrt(self.N))
-        r = []
-        while len(r) < 3:
-            temp_r = np.random.randint(bound, size=self.N)
-            if self.polynomial.l2_norm(temp_r) < bound:
-                r.append(self.cypari.Pol(temp_r))
-        return r
+        return self.polynomial.guassian_bounded_array(self.k, self.sigma, bound)
 
     def get_challenge(self):
         return self.polynomial.challenge(kappa=self.kappa)

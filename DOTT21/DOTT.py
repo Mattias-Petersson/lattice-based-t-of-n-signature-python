@@ -49,9 +49,8 @@ class DOTT:
 
         self.s = self.N ** (3 / 2) * math.log2(self.N)
         self.s_bar = self.N
-        __log2q = math.ceil(math.log2(self.q))
         self.k, self.l = 6, 5
-        self.w = __log2q
+        self.w = math.ceil(math.log2(self.q))
 
         self.B = make_B()
         self.Â = self.__make_A((2, self.l + 2 * self.w))
@@ -70,16 +69,7 @@ class DOTT:
         return A
 
     def __make_r(self, n: int, sigma, bound: int) -> cypari2.gen.Gen:
-        arr2 = lambda: self.polynomial.gaussian_element(sigma)
-        r = []
-        while len(r) < n:
-            temp = arr2()
-            if (
-                self.polynomial.l2_norm(self.polynomial.pol_to_arr(temp))
-                <= bound
-            ):
-                r.append(temp)
-        return r
+        return self.polynomial.guassian_bounded_array(n, sigma, bound)
 
     def __Ar_with_msg(
         self, c: Commit
@@ -122,7 +112,7 @@ class DOTT:
         True if the commitment was valid, False otherwise.
         """
         for r in com.r:
-            if self.polynomial.l2_norm(self.cypari.liftall(r)) > self.B:
+            if self.polynomial.l2_norm(r) > self.B:
                 return False
         Ar, zeroes = self.__Ar_with_msg(com)
         rhs = self.cypari(Ar + zeroes)

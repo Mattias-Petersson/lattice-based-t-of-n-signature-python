@@ -38,7 +38,9 @@ class SecretShare:
         return [self.cypari(random_polynomial)(x=i + 1) for i in range(self.n)]
 
     def __reconstruct(self, res_arr, x_arr):
-        norm_sum = lambda j, i: j / (j - i) if i != j else 0
+        norm_sum = lambda j, i: (
+            j * self.polynomial.inversion[(j - i)] if i != j else 0
+        )
         sum_arr = [sum(norm_sum(j, i) for j in x_arr) for i in x_arr]
         return sum([int(s) * r for s, r in zip(sum_arr, res_arr)])
 
@@ -58,3 +60,19 @@ class SecretShare:
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.__reconstruct(i, contributors) for i in polys]
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
+
+
+if __name__ == "__main__":
+    print()
+    c = CommitmentScheme()
+    s = SecretShare((2, 4), c.q)
+    p1 = s.polynomial.uniform_element()
+    r = s.share_poly(p1)
+    print(range(s.polynomial.N))
+    print(len(r))
+    indices = np.random.choice(range(len(r)), size=s.t, replace=False)
+    r2 = [r[i] for i in indices]
+    print(indices)
+    print(p1)
+    print(s.reconstruct_poly(r2))
+    print(s.reconstruct_poly(r[:2]))
