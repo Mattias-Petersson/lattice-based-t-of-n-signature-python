@@ -27,11 +27,12 @@ class SecretShare:
         the secret s as the x^0 coefficient such that p(0) = s. We are also limiting
         the coefficient to not be zero.
         """
-        [poly] = [
+        poly_arr = [
             str(np.random.randint(1, self.q)) + "*x^" + str(self.t - i) + "+"
             for i in range(1, self.t)
         ]
-        return self.cypari.Pol(poly + str(s)) * self.cypari.Mod(1, self.q)
+        poly = "".join(poly_arr) + str(s)
+        return self.cypari.Pol(poly) * self.cypari.Mod(1, self.q)
 
     def __share(self, s):
         random_polynomial = self.__generatePoly(s)
@@ -65,14 +66,14 @@ class SecretShare:
 if __name__ == "__main__":
     print()
     c = CommitmentScheme()
-    s = SecretShare((2, 4), c.q)
+    s = SecretShare((3, 4), c.q)
     p1 = s.polynomial.uniform_element()
     r = s.share_poly(p1)
-    print(range(s.polynomial.N))
-    print(len(r))
+    print(p1)
+    print(len(p1))
+    print(r)
     indices = np.random.choice(range(len(r)), size=s.t, replace=False)
     r2 = [r[i] for i in indices]
     print(indices)
     print(p1)
     print(s.reconstruct_poly(r2))
-    print(s.reconstruct_poly(r[:2]))

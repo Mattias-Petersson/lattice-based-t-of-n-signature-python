@@ -1,18 +1,22 @@
 import numpy as np
 import cypari2
 from BDLOP16.CommitmentScheme import CommitmentScheme
-from type.classes import Commit, NameData
+from SecretSharing.SecretShare2 import SecretShare
+from type.classes import Commit, NameData, SecretShareSplit
 
 
 class Participant:
-    def __init__(self, comm_scheme: CommitmentScheme):
+    def __init__(
+        self, comm_scheme: CommitmentScheme, secret_share: SecretShare
+    ):
         self.name = (
             np.random.choice(["Alice", "Bob"])
             + "_"
             + str(np.random.randint(1000))
         )
-        self.p = 22
+        self.p = 2029
         self.comm_scheme = comm_scheme
+
         self.polynomial = self.comm_scheme.polynomial
         self.cypari = self.comm_scheme.cypari
 
@@ -20,9 +24,12 @@ class Participant:
         self.other_a: tuple[NameData, ...]
         self.h_b: tuple[NameData, ...]
 
+        self.other_s_i: tuple[SecretShareSplit, ...]
+        self.other_e_i: tuple[SecretShareSplit, ...]
+
         self.hash = lambda x: self.polynomial.hash(self.comm_scheme.kappa, x)
-        self.gaussian = lambda x: self.polynomial.gaussian_array(
-            x, sigma=self.comm_scheme.sigma
+        self.gaussian = lambda n: self.polynomial.gaussian_array(
+            n=n, sigma=self.comm_scheme.sigma
         )
 
     def a_hash(self) -> NameData:
@@ -50,7 +57,8 @@ class Participant:
         self.sum_a = self.a
         for i in self.other_a:
             self.sum_a += i.data
-        self.s_i, self.e_i = (self.gaussian(1) for _ in range(2))
+        self.s_i = self.gaussian(1)
+        self.e_i = self.gaussian(1)
         bi = self.cypari(self.sum_a * self.s_i + self.p * self.e_i)
         return NameData(self.name, self.hash(bi))
 
@@ -58,6 +66,18 @@ class Participant:
         return self.comm_scheme.commit(
             Commit(commitment, self.comm_scheme.r_commit())
         )
+
+    def get_e_i(self):
+        return NameData(self.name, self.e_i)
+
+    def get_s_i(self):
+        return NameData(self.name, self.s_i)
+
+    def make_b_bar(self):
+        self.b_bar = []
+        for s, e in zip(self.other_s_i, self.other_e_i):
+            self.b_bar.append(self.sum_a * s.share.p + self.p * e.share.p)
+        return NameData(self.name, self.b_bar)
 
     def step_three(self):
         com_si, com_ei = self.__commit(self.s_i), self.__commit(self.e_i)

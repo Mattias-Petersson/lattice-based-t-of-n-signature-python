@@ -54,3 +54,4 @@ class ProofOfOpenLinear(ProofOfOpen):
 
 SecretSharePoly = namedtuple("SecretShare", ["x", "p"])
 NameData = namedtuple("NameData", ["name", "data"])
+SecretShareSplit = namedtuple("SecretShareSplit", ["name", "holder", "share"])
