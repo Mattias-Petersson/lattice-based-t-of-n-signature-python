@@ -7,17 +7,8 @@ from utils.Polynomial import Polynomial
 
 class DOTT:
     """
-    A trapdoor commitment scheme. q and n are constant values no matter what
-    level of NIST security level we use in accordance with Dilithium
-    specifications.
-
-    N is a power of two, defining the degree to f(x)
-    q is the prime modulus
-    s_bar is ?
-    s is ?
-    w is ?
-    B is the maximum L2 norm of signature share z_j in R^(l + k) for j in [n]
-    (k, l) is the shape of A.
+    An implemention of a trapdoor commitment scheme by Damgård, Orlandi,
+    Takahashi, and Tibouchi.
     """
 
     def __init__(self):
@@ -97,7 +88,7 @@ class DOTT:
         A commitment c from x, r.
         """
         Ar, zeroes = self.__Ar_with_msg(c)
-        return self.cypari(Ar + zeroes)
+        return Ar + zeroes
 
     def open(self, com: CommitOpen) -> bool:
         """
@@ -115,8 +106,7 @@ class DOTT:
             if self.polynomial.l2_norm(r) > self.B:
                 return False
         Ar, zeroes = self.__Ar_with_msg(com)
-        rhs = self.cypari(Ar + zeroes)
-        return bool(self.cypari(com.c == rhs))
+        return com.c == Ar + zeroes
 
     def tc_gen(self):
         """
@@ -145,7 +135,7 @@ class DOTT:
             (self.l, 2 * self.w), sigma=self.s_bar
         )
         G = make_G()
-        Ar = self.cypari(A_ol * R)
+        Ar = A_ol * R
         Â = self.cypari.concat(A_ol, G - Ar)
         return (R, Â)
 
@@ -159,13 +149,4 @@ class DOTT:
         """
         Uses the Micciancio-Peikert algorithm (MP12 algorithm 3).
         """
-        return 0
-
-
-if __name__ == "__main__":
-    b = DOTT()
-    com = b.make_commit()
-    test = b.com(com)
-    test2 = b.open(CommitOpen(test, 0, commit=com))
-    b.tc_gen()
-    print(test2)
+        raise NotImplementedError("Not implemented for this version.")
