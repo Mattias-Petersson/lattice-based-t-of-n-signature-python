@@ -1,8 +1,7 @@
 import numpy as np
-import cypari2
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, NameData, SecretShareSplit
+from type.classes import Commit, NameData, SecretSharePoly, SecretShareSplit
 
 
 class Participant:
@@ -14,70 +13,76 @@ class Participant:
             + "_"
             + str(np.random.randint(1000))
         )
-        self.p = 2029
-        self.comm_scheme = comm_scheme
-
-        self.polynomial = self.comm_scheme.polynomial
-        self.cypari = self.comm_scheme.cypari
-
-        self.hashes: tuple[NameData, ...]
-        self.other_a: tuple[NameData, ...]
-        self.h_b: tuple[NameData, ...]
-
-        self.other_s_i: tuple[SecretShareSplit, ...]
-        self.other_e_i: tuple[SecretShareSplit, ...]
-
         self.hash = lambda x: self.polynomial.hash(self.comm_scheme.kappa, x)
         self.gaussian = lambda n: self.polynomial.gaussian_array(
             n=n, sigma=self.comm_scheme.sigma
         )
 
-    def a_hash(self) -> NameData:
-        self.a = self.polynomial.uniform_element()
-        return NameData(self.name, self.hash(self.a))
+        self.p = 2029
+        self.comm_scheme = comm_scheme
+        self.secret_share = secret_share
+        self.polynomial = self.comm_scheme.polynomial
+        self.cypari = self.comm_scheme.cypari
 
-    def own_a(self) -> NameData:
-        return NameData(self.name, self.a)
+        self.h_b: tuple[NameData, ...]
+        self.a = self.polynomial.uniform_element()
+        self.a_hash = self.hash(self.a)
+        self.others = dict()
+
+    def share_attr(self, attr: str):
+        if not hasattr(self, attr):
+            raise ValueError(
+                f"No such attribute accepted by participant: {attr}"
+            )
+        return NameData(self.name, getattr(self, attr))
+
+    def share_others_attr(self, attr: str):
+        return NameData(self.name, self.others[attr])
+
+    def recv_from_other(self, attr: str, data):
+        self.others[attr] = data
 
     def compare_a_hash(self) -> NameData:
-        for a in self.other_a:
+        for a in self.others["a"]:
             [hash_to_compare] = list(
-                filter(lambda x: x.name == a.name, self.hashes)
+                filter(lambda x: x.name == a.name, self.others["a_hash"])
             )
-
             if self.cypari(self.hash(a.data) != hash_to_compare.data):
                 return NameData(a.name, False)
         return NameData(self.name, True)
 
-    def make_b_i(self) -> NameData:
-        """
-        Runs compare_a_hash to ensure that the a's match with their hash.
-        Then concatenates a to be the sum of all a_j, j from 0 to n.
-        """
-        self.sum_a = self.a
-        for i in self.other_a:
-            self.sum_a += i.data
-        self.s_i = self.gaussian(1)
-        self.e_i = self.gaussian(1)
-        bi = self.cypari(self.sum_a * self.s_i + self.p * self.e_i)
-        return NameData(self.name, self.hash(bi))
+    def make_b(self):
+        self.sum_a = self.a + sum([i.data for i in self.others["a"]])
+        self.s = self.gaussian(1)
+        self.e = self.gaussian(1)
+        self.b = self.cypari(self.sum_a * self.s + self.p * self.e)
+        self.b_hash = self.hash(self.sum_a * self.s + self.p * self.e)
 
     def __commit(self, commitment):
         return self.comm_scheme.commit(
             Commit(commitment, self.comm_scheme.r_commit())
         )
 
-    def get_e_i(self):
-        return NameData(self.name, self.e_i)
+    def reconstruct(self, shares: list[SecretSharePoly]):
+        recon = self.secret_share.reconstruct_poly(shares)
+        return NameData(self.name, recon == self.s)
 
-    def get_s_i(self):
-        return NameData(self.name, self.s_i)
+    def bar_vars(self) -> NameData:
+        calc_b_bar = lambda s, e: self.sum_a * s + self.p * e
+        b_bars: list[NameData] = []
+        coms_s: list[NameData] = []
+        coms_e: list[NameData] = []
+        for s, e in zip(self.others["s"], self.others["e"]):
+            if s.name != e.name:
+                raise ValueError(
+                    "Index j does not map to the same user when creating b_bar."
+                )
 
-    def make_b_bar(self):
-        self.b_bar = []
-        for s, e in zip(self.other_s_i, self.other_e_i):
-            self.b_bar.append(self.sum_a * s.share.p + self.p * e.share.p)
+            b_bars += NameData(s.name, calc_b_bar(s.share.p, e.share.p))
+            coms_s += NameData(s.name, self.__commit(s.share.p))
+            coms_e += NameData(e.name, self.__commit(e.share.p))
+
+        self.b_bar = tuple(b_bars)
+        self.coms_s = tuple(coms_s)
+        self.coms_e = tuple(coms_e)
         return NameData(self.name, self.b_bar)
-
-    def step_three(self):
-        com_si, com_ei = self.__commit(self.s_i), self.__commit(self.e_i)
