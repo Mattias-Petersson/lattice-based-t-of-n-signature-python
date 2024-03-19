@@ -107,12 +107,11 @@ if __name__ == "__main__":
     comm = CommitmentScheme()
     open = dict()
     for i in range(100):
-        c: Commit = Commit(
+        commit: Commit = Commit(
             m=comm.polynomial.uniform_array(comm.l), r=comm.r_commit()
         )
-        commit = comm.commit(c)
-        fun = comm.honest_func()
-        opened = comm.open(CommitOpen(commit, fun, commit=c))
+        c = comm.commit(commit)
+        opened = comm.open(CommitOpen(c, commit))
         open[opened] = open.get(opened, 0) + 1
     print(open)
     print("Total execution time: %s seconds" % (round(time.time() - start, 4)))

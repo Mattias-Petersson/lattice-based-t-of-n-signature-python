@@ -12,7 +12,7 @@ def honest_f(comm_scheme):
 @pytest.fixture
 def commit_open_honest(commit, honest_f) -> CommitOpen:
     commit, c = commit
-    return CommitOpen(c, honest_f, commit=commit)
+    return CommitOpen(c, commit, honest_f)
 
 
 def test_faulty_kappa():
@@ -31,7 +31,7 @@ def test_commit_r_open(comm_scheme, commit, honest_f):
     commit, _ = commit
     commit.r = comm_scheme.r_open()
     c = comm_scheme.commit(commit)
-    assert comm_scheme.open(CommitOpen(c, honest_f, commit=commit))
+    assert comm_scheme.open(CommitOpen(c, commit, honest_f))
 
 
 def test_commit_r_commit(comm_scheme, commit_open_honest):
@@ -47,4 +47,4 @@ def test_commit_random_f(comm_scheme, commit, poly):
     """
     commit, c = commit
     other_f = poly.small_invertible(comm_scheme.kappa)
-    assert not comm_scheme.open(CommitOpen(c, other_f, commit=commit))
+    assert not comm_scheme.open(CommitOpen(c, commit, other_f))

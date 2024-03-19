@@ -32,24 +32,24 @@ class BGV:
 
     def __share_data(self, attr, data):
         for i in self.participants:
-            res = tuple(filter(lambda p: p.name != i.name, data))
+            res = tuple(filter(lambda p: p.name == i.name, data))
             i.recv_from_other(attr, res)
 
     def __recv_share(self, attr_name: str):
         return self.__share_data(attr_name, self.__recv_value(attr_name))
 
-    def __assert_a_with_hash(self):
+    def __assert_value_matches_hash(self, attr):
         """
-        Takes in the hash of a for all participants, then all a. Then each
+        Takes in the hash of an attr all participants, then all values. Then each
         participant does a check if the hashes they received correspond to the
-        'a' they received.
+        value they received when hashed.
         """
-        self.__recv_share("a_hash")
-        self.__recv_share("a")
+        self.__recv_share(attr + "_hash")
+        self.__recv_share(attr)
         for i in self.participants:
-            if not i.compare_a_hash().data:
+            if not i.compare_hash(attr).data:
                 raise ValueError(
-                    f"Aborting. a and a_hash do not match for user {i.name}"
+                    f"Aborting. {attr} and {attr}_hash do not match for user {i.name}"
                 )
 
     def __compute_b(self):
@@ -101,11 +101,31 @@ class BGV:
                     f"Aborting. Failed to reconstruct using their shares for participant {i.name}"
                 )
 
+    def __broadcast(self):
+        """
+        Broadcast all com_s, com_e, com_sbar, com_ebar
+        """
+        for i in self.participants:
+            i.bar_vars()
+        self.__recv_share("c_s")
+        self.__recv_share("c_e")
+        self.__recv_share("c_s_bar")
+        self.__recv_share("c_e_bar")
+        self.__recv_share("b")
+        self.__recv_share("b_bar")
+
+        data = self.__recv_value("coms_s_bar")
+        self.__share_data("coms_s_bar", data)
+        for i in self.participants:
+            i.check_open()
+
     def DKGen(self):
-        self.__assert_a_with_hash()
+        self.__assert_value_matches_hash("a")
         self.__compute_b()
         self.__assign_shares("s")
         self.__assign_shares("e")
+        self.__broadcast()
+        self.__assert_value_matches_hash("b")
         self.reconstruct_shares("s")
         self.reconstruct_shares("e")
 

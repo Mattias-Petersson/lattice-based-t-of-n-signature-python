@@ -16,13 +16,13 @@ def commit(dott):
 
 def test_valid_com(dott, commit):
     c = dott.com(commit)
-    assert dott.open(CommitOpen(c, 0, commit=commit))
+    assert dott.open(CommitOpen(c, commit))
 
 
 def test_invalid_com(dott, commit):
     commit_two = dott.make_commit()
     c = dott.com(commit)
-    assert not dott.open(CommitOpen(c, 0, commit=commit_two))
+    assert not dott.open(CommitOpen(c, commit_two))
 
 
 def test_open_with_tc_gen_A(dott, commit):
@@ -32,4 +32,4 @@ def test_open_with_tc_gen_A(dott, commit):
     """
     dott.Â = dott.tc_gen()[1]
     c = dott.com(commit)
-    assert dott.open(CommitOpen(c, 0, commit=commit))
+    assert dott.open(CommitOpen(c, commit))
