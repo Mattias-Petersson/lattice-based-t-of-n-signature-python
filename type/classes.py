@@ -1,5 +1,4 @@
 from collections import namedtuple
-import cypari2
 
 type TN = tuple[int, int]
 
@@ -24,7 +23,7 @@ class CommitOpen(Commit):
     def __init__(self, c, commit: Commit | None = None, f=None, m=None, r=None):
         if commit is None and m is None and r is None:
             raise ValueError("Either a commit or m & r needs to be supplied.")
-        self.f = f if f else cypari2.Pari().Pol("1")
+        self.f = f if f else 1
         self.c = c
 
         if commit:

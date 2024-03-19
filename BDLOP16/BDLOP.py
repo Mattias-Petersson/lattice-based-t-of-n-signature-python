@@ -27,11 +27,9 @@ class BDLOP:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
-        lhs = self.cypari(
-            self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
-        )
-        rhs = self.cypari(proof.t + (d * proof.c[0][0]))
-        return bool(self.cypari(lhs == rhs))
+        lhs = self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        rhs = proof.t + d * proof.c[0][0]
+        return lhs == rhs
 
     def __verify_A1_z_multiple(self, *args, d):
         return all(self.__verify_A1_z(proof, d) for proof in args)
@@ -50,16 +48,16 @@ class BDLOP:
         return self.polynomial.hash(self.comm_scheme.kappa, *args)
 
     def __make_lhs(self, A, vector) -> cypari2.gen.Gen:
-        return self.cypari(A * self.cypari.mattranspose(vector))
+        return A * self.cypari.mattranspose(vector)
 
     def __make_rhs(self, t, d, c) -> cypari2.gen.Gen:
-        return self.cypari(t + d * c)
+        return t + d * c
 
     def __A1_A2(self) -> tuple[cypari2.gen.Gen, cypari2.gen.Gen]:
         return (self.comm_scheme.A1, self.comm_scheme.A2)
 
     def __check_equivalences(self, lhs: tuple, rhs: tuple) -> bool:
-        return all(self.cypari(l == r) for l, r in zip(lhs, rhs))
+        return all(l == r for l, r in zip(lhs, rhs))
 
     def proof_of_opening(self, r) -> ProofOfOpen:
         y = self.__make_y()
@@ -88,7 +86,7 @@ class BDLOP:
     ) -> bool:
         if not self.__verify_z_bound(proof.z):
             return False
-        r0 = (self.comm_scheme.cypari.Pol("0") for _ in range(3))
+        r0 = (self.cypari.Pol("0") for _ in range(3))
         cprime = commit_with_r(self.comm_scheme, m, r0)
         c1 = c1 - cprime[0][0]
         c2 = c2 - cprime[0][1]
@@ -119,12 +117,9 @@ class BDLOP:
         self, r1, r2, g1, g2
     ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen]:
         y = [self.__make_y() for _ in range(2)]
-        u = self.cypari(
-            self.comm_scheme.A2
-            * (
-                g2 * self.cypari.mattranspose(y[0])
-                - g1 * self.cypari.mattranspose(y[1])
-            )
+        u = self.comm_scheme.A2 * (
+            g2 * self.cypari.mattranspose(y[0])
+            - g1 * self.cypari.mattranspose(y[1])
         )
         t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
         d = self.__d_sigma(*t, g1, g2)
@@ -137,22 +132,16 @@ class BDLOP:
         d = self.__d_sigma(proof[0].t, proof[1].t, proof[0].g, proof[1].g)
         if not self.__initial_check(*proof, d=d):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A2
-            * (
-                proof[1].g * self.cypari.mattranspose(proof[0].z)
-                - proof[0].g * self.cypari.mattranspose(proof[1].z)
-            )
+        lhs = self.comm_scheme.A2 * (
+            proof[1].g * self.cypari.mattranspose(proof[0].z)
+            - proof[0].g * self.cypari.mattranspose(proof[1].z)
         )
 
-        rhs = self.cypari(
-            (proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]) * d
-            + u
-        )
+        rhs = (
+            proof[1].g * proof[0].c[0][1] - proof[0].g * proof[1].c[0][1]
+        ) * d + u
+
         return self.__check_equivalences(lhs, rhs)
-
-    def __make_t(self, y):
-        return self.cypari(self.comm_scheme.A1 * self.cypari.mattranspose(y))
 
     def proof_of_sum(self, r1, r2, r3, g1, g2, g3) -> tuple[
         tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen],
@@ -160,19 +149,16 @@ class BDLOP:
     ]:
         y = tuple(self.__make_y() for _ in range(3))
         r = r1, r2, r3
-        t = tuple(self.__make_t(i) for i in y)
+        t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
         d = self.__d_sigma(*t)
         z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
         proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen](
             ProofOfOpen(z, t) for z, t in zip(z, t)
         )
-        u = self.cypari(
-            self.comm_scheme.A2
-            * (
-                g1 * self.cypari.mattranspose(y[0])
-                + g2 * self.cypari.mattranspose(y[1])
-                - g3 * self.cypari.mattranspose(y[2])
-            )
+        u = self.comm_scheme.A2 * (
+            g1 * self.cypari.mattranspose(y[0])
+            + g2 * self.cypari.mattranspose(y[1])
+            - g3 * self.cypari.mattranspose(y[2])
         )
         return proof, u
 
@@ -185,23 +171,16 @@ class BDLOP:
         d = self.__d_sigma(*t)
         if not self.__initial_check(*proof, d=d):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A2
-            * (
-                proof[0].g * self.cypari.mattranspose(proof[0].z)
-                + proof[1].g * self.cypari.mattranspose(proof[1].z)
-                - proof[2].g * self.cypari.mattranspose(proof[2].z)
-            )
+        lhs = self.comm_scheme.A2 * (
+            proof[0].g * self.cypari.mattranspose(proof[0].z)
+            + proof[1].g * self.cypari.mattranspose(proof[1].z)
+            - proof[2].g * self.cypari.mattranspose(proof[2].z)
         )
-        rhs = self.cypari(
-            (
-                proof[0].g * proof[0].c[0][1]
-                + proof[1].g * proof[1].c[0][1]
-                - proof[2].g * proof[2].c[0][1]
-            )
-            * d
-            + u
-        )
+        rhs = (
+            proof[0].g * proof[0].c[0][1]
+            + proof[1].g * proof[1].c[0][1]
+            - proof[2].g * proof[2].c[0][1]
+        ) * d + u
         return self.__check_equivalences(lhs, rhs)
 
     def proof_of_triple_sum(self, r1, r2, r3, r4, g1, g2, g3, g4) -> tuple[
@@ -210,20 +189,17 @@ class BDLOP:
     ]:
         y = tuple(self.__make_y() for _ in range(4))
         r = r1, r2, r3, r4
-        t = tuple(self.__make_t(i) for i in y)
+        t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
         d = self.__d_sigma(*t)
         z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
         proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen, ProofOfOpen](
             ProofOfOpen(z, t) for z, t in zip(z, t)
         )
-        u = self.cypari(
-            self.comm_scheme.A2
-            * (
-                g1 * self.cypari.mattranspose(y[0])
-                + g2 * self.cypari.mattranspose(y[1])
-                + g3 * self.cypari.mattranspose(y[2])
-                - g4 * self.cypari.mattranspose(y[3])
-            )
+        u = self.comm_scheme.A2 * (
+            g1 * self.cypari.mattranspose(y[0])
+            + g2 * self.cypari.mattranspose(y[1])
+            + g3 * self.cypari.mattranspose(y[2])
+            - g4 * self.cypari.mattranspose(y[3])
         )
         return proof, u
 
@@ -241,25 +217,19 @@ class BDLOP:
         d = self.__d_sigma(*t)
         if not self.__initial_check(*proof, d=d):
             return False
-        lhs = self.cypari(
-            self.comm_scheme.A2
-            * (
-                proof[0].g * self.cypari.mattranspose(proof[0].z)
-                + proof[1].g * self.cypari.mattranspose(proof[1].z)
-                + proof[2].g * self.cypari.mattranspose(proof[2].z)
-                - proof[3].g * self.cypari.mattranspose(proof[3].z)
-            )
+        lhs = self.comm_scheme.A2 * (
+            proof[0].g * self.cypari.mattranspose(proof[0].z)
+            + proof[1].g * self.cypari.mattranspose(proof[1].z)
+            + proof[2].g * self.cypari.mattranspose(proof[2].z)
+            - proof[3].g * self.cypari.mattranspose(proof[3].z)
         )
-        rhs = self.cypari(
-            (
-                proof[0].g * proof[0].c[0][1]
-                + proof[1].g * proof[1].c[0][1]
-                + proof[2].g * proof[2].c[0][1]
-                - proof[3].g * proof[3].c[0][1]
-            )
-            * d
-            + u
-        )
+        rhs = (
+            proof[0].g * proof[0].c[0][1]
+            + proof[1].g * proof[1].c[0][1]
+            + proof[2].g * proof[2].c[0][1]
+            - proof[3].g * proof[3].c[0][1]
+        ) * d + u
+
         return self.__check_equivalences(lhs, rhs)
 
 
@@ -290,12 +260,12 @@ def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
     return open
 
 
-def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP, cypari):
+def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g = [comm_scheme.get_challenge() for _ in range(2)]
 
-    c1, r1 = commit(comm_scheme, cypari(g[0] * m))
-    c2, r2 = commit(comm_scheme, cypari(g[1] * m))
+    c1, r1 = commit(comm_scheme, g[0] * m)
+    c2, r2 = commit(comm_scheme, g[1] * m)
     first, second, u = ZK.proof_of_linear_relation(r1, r2, *g)
     first = ProofOfOpenLinear(c1, g[0], proof=first)
     second = ProofOfOpenLinear(c2, g[1], proof=second)
@@ -303,13 +273,13 @@ def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP, cypari):
     return open
 
 
-def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOP, cypari):
+def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOP):
     m1 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     m2 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g1, g2, g3 = [comm_scheme.get_challenge() for _ in range(3)]
-    c1, r1 = commit(comm_scheme, cypari(g3 * m1))
-    c2, r2 = commit(comm_scheme, cypari(g3 * m2))
-    c3, r3 = commit(comm_scheme, cypari(g1 * m1 + g2 * m2))
+    c1, r1 = commit(comm_scheme, g3 * m1)
+    c2, r2 = commit(comm_scheme, g3 * m2)
+    c3, r3 = commit(comm_scheme, g1 * m1 + g2 * m2)
     proof, u = ZK.proof_of_sum(r1, r2, r3, g1, g2, g3)
     proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
         ProofOfOpenLinear(c, g, proof=proof)
@@ -339,12 +309,12 @@ def main():
     print("Specific opening time: ", time.time() - clock)
     clock = time.time()
     for _ in range(100):
-        open = linear_relation(comm_scheme, ZK, comm_scheme.cypari)
+        open = linear_relation(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Linear Relation time: ", time.time() - clock)
     clock = time.time()
     for _ in range(100):
-        open = proof_of_sum(comm_scheme, ZK, comm_scheme.cypari)
+        open = proof_of_sum(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Sum time: ", time.time() - clock)
     clock = time.time()

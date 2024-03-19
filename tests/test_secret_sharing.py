@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from SecretSharing.SecretShare2 import SecretShare
+from type.classes import SecretSharePoly
 
 
 @pytest.fixture
@@ -16,17 +17,17 @@ def p1_r(secret_share, poly):
     return p1, r
 
 
-def test_valid_restructuring(secret_share, poly, cypari):
+def test_valid_restructuring(secret_share, poly):
     """
     t-out-of-n participants should get the same polynomial back.
     """
     p1 = poly.uniform_element()
     r = secret_share.share_poly(p1)
     p2 = secret_share.reconstruct_poly(r[:2])
-    assert cypari(p1 == p2)
+    assert p1 == p2
 
 
-def test_too_many_participants(secret_share, p1_r, cypari):
+def test_too_many_participants(secret_share, p1_r):
     """
     We should allow more than t participants to contribute without the program
     failing. Regression only allows the exact number of t, but we should account
@@ -34,19 +35,19 @@ def test_too_many_participants(secret_share, p1_r, cypari):
     """
     p1, r = p1_r
     p2 = secret_share.reconstruct_poly(r[:-1])
-    assert cypari(p1 == p2)
+    assert p1 == p2
 
 
-def test_too_few_participants(secret_share, p1_r, cypari):
+def test_too_few_participants(secret_share, p1_r):
     """
     Fewer than t participants should not return the same polynomial.
     """
     p1, r = p1_r
     p2 = secret_share.reconstruct_poly([r[0]])
-    assert not cypari(p1 == p2)
+    assert not p1 == p2
 
 
-def test_random_order(secret_share, p1_r, cypari):
+def test_random_order(secret_share, p1_r):
     """
     We should allow arbitrary ordering of the elements
     sent in to reconstruct the polynomial.
@@ -57,4 +58,14 @@ def test_random_order(secret_share, p1_r, cypari):
     )
     r = [r[i] for i in indices]
     p2 = secret_share.reconstruct_poly(r)
-    assert cypari(p1 == p2)
+    assert p1 == p2
+
+
+def test_additively_homomorphic(secret_share, p1_r, poly):
+    p1, p1_r = p1_r
+    p2 = poly.uniform_element()
+    p2_r = secret_share.share_poly(p2)
+    print(p1_r)
+    added = [SecretSharePoly(x=i.x, p=i.p + j.p) for i, j in zip(p1_r, p2_r)]
+    reconstructed = secret_share.reconstruct_poly(added)
+    assert reconstructed == p1 + p2

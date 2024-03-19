@@ -120,10 +120,8 @@ class DOTT:
         def make_G() -> list:
             concat = lambda lst1, lst2: self.cypari.concat(lst1, lst2)
             range_w = range(self.w)
-            poly_one = self.cypari.Pol("1")
-
-            powers_of_two_pol = self.cypari([i**2 for i in range_w] * poly_one)
-            zeroes_pol = self.cypari([0 for _ in range_w] * poly_one)
+            powers_of_two_pol = [i**2 for i in range_w]
+            zeroes_pol = [0 for _ in range_w]
 
             row_one = concat(powers_of_two_pol, zeroes_pol)
             row_two = concat(zeroes_pol, powers_of_two_pol)

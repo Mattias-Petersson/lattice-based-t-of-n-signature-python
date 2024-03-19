@@ -76,19 +76,19 @@ class CommitmentScheme:
         return self.polynomial.challenge(kappa=self.kappa)
 
     def honest_func(self):
-        return self.cypari.Pol("1")
+        return 1
 
     def commit(self, c: Commit) -> list[cypari2.gen.Gen]:
         Ar, zerox = self.__a_with_message(c)
-        return self.cypari(Ar + zerox)
+        return Ar + zerox
 
     def open(self, open: CommitOpen) -> bool:
         Ar, zerox = self.__a_with_message(open)
         fz = open.f * zerox
 
-        rhs = self.cypari(Ar + fz)
-        lhs = self.cypari(open.f * open.c)
-        return bool(self.cypari(lhs == rhs))
+        rhs = Ar + fz
+        lhs = open.f * open.c
+        return lhs == rhs
 
     def get_commit(self) -> tuple[Commit, list]:
         """

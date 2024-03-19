@@ -59,7 +59,7 @@ class Polynomial:
         Returns:
         The polynomial that is congruent to the argument for the ring.
         """
-        return self.cypari(
+        return (
             p
             * self.cypari.Mod(1, self.q)
             * self.cypari.Mod(1, self.basis_poly())
@@ -152,9 +152,9 @@ class Polynomial:
         """
         c1 = self.challenge(kappa)
         c2 = self.challenge(kappa)
-        while self.cypari(c1 == c2):
+        while c1 == c2:
             c1 = self.challenge(kappa)
-        return self.cypari(c2 - c1)
+        return c2 - c1
 
     def hash(self, kappa: int, *args) -> cypari2.gen.Gen:
         """

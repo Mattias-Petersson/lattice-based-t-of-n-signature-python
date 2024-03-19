@@ -20,7 +20,7 @@ def test_small_invertible(comm_scheme, poly):
     assert np.linalg.norm(f, np.inf) <= 2
 
 
-def test_hash_equivalence(comm_scheme, poly, cypari):
+def test_hash_equivalence(comm_scheme, poly):
     """
     Our hash function should output the same polynomial given
     the same hash seed.
@@ -28,10 +28,10 @@ def test_hash_equivalence(comm_scheme, poly, cypari):
     uniform_polynomial = poly.uniform_array(3)
     d1 = poly.hash(comm_scheme.kappa, uniform_polynomial)
     d2 = poly.hash(comm_scheme.kappa, uniform_polynomial)
-    assert cypari(d1 == d2)
+    assert d1 == d2
 
 
-def test_hash_non_equivalence(comm_scheme, poly, cypari):
+def test_hash_non_equivalence(comm_scheme, poly):
     """
     Our hash function should NOT output the same polynomial,
     even with a small difference in hash seed.
@@ -40,7 +40,7 @@ def test_hash_non_equivalence(comm_scheme, poly, cypari):
     uniform_polynomial2 = uniform_polynomial1[:-1]
     d1 = poly.hash(comm_scheme.kappa, uniform_polynomial1)
     d2 = poly.hash(comm_scheme.kappa, uniform_polynomial2)
-    assert not cypari(d1 == d2)
+    assert not d1 == d2
 
 
 def test_hash_no_seed(comm_scheme, poly):

@@ -13,11 +13,6 @@ def comm_scheme():
 
 
 @pytest.fixture
-def cypari(comm_scheme):
-    return comm_scheme.cypari
-
-
-@pytest.fixture
 def poly(comm_scheme):
     return Polynomial(comm_scheme.N, comm_scheme.q)
 
