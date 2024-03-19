@@ -81,17 +81,6 @@ class Participant:
         c = NameData(share.name, self.comm_scheme.commit(comm.data))
         return comm, c
 
-    def check_open2(self):
-        print(self.others.keys())
-        c = dict()
-        for i in self.others["coms_s_bar"]:
-            print(i.name)
-            for j in i.data:
-                c[j.name] = c.get(j.name, []) + [j]
-                print(j)
-            print()
-        print(c)
-
     def check_open(self):
         c = dict()
         for i in self.others["c_s_bar"]:
@@ -104,36 +93,37 @@ class Participant:
                         f"User {self.name} did not get a proper opening for {j.name}"
                     )
 
+    def reconstruct_b(self):
+        raise NotImplementedError()
+
     def bar_vars(self) -> NameData:
         """
         Commits to each secret share s and e, as well as calculate b for these
         as a * s + p * e.
         """
         calc_b_bar = lambda s, e: self.sum_a * s + self.p * e
-        b_bars: list[NameData] = []
-        coms_s: list[NameData] = []
-        c_s: list[NameData] = []
-        coms_e: list[NameData] = []
-        c_e: list[NameData] = []
+        add_to_vals = lambda name, value: vals.get(name, []) + [value]
+        to_tuple = lambda name: tuple[NameData, ...](vals[name])
+        vals = dict()
         for s, e in zip(self.others["shares_s"], self.others["shares_e"]):
             if s.name != e.name:
                 raise ValueError(
                     "Index j does not map to the same user when creating b_bar."
                 )
-
-            b_bars += NameData(s.name, calc_b_bar(s.share.p, e.share.p))
+            vals["b_bars"] = add_to_vals(
+                "b_bars", NameData(s.name, calc_b_bar(s.share.p, e.share.p))
+            )
             s_temp = self.__commit_to_shares(s)
-            coms_s += [s_temp[0]]
-            c_s += [s_temp[1]]
-            # print(self.comm_scheme.open(CommitOpen(s_temp[1].data, s_temp[0])))
+            vals["coms_s"] = add_to_vals("coms_s", s_temp[0])
+            vals["c_s"] = add_to_vals("c_s", s_temp[1])
             e_temp = self.__commit_to_shares(e)
-            coms_e += [e_temp[0]]
-            c_e += [e_temp[1]]
+            vals["coms_e"] = add_to_vals("coms_e", e_temp[0])
+            vals["c_e"] = add_to_vals("c_e", e_temp[1])
 
-        self.b_bar = tuple(b_bars)
-        self.coms_s_bar = tuple(coms_s)
+        self.b_bar = to_tuple("b_bars")
+        self.coms_s_bar = to_tuple("coms_s")
+        self.c_s_bar = to_tuple("c_s")
+        self.coms_e_bar = to_tuple("coms_e")
+        self.c_e_bar = to_tuple("c_e")
 
-        self.c_s_bar: tuple[NameData, ...] = tuple(c_s)
-        self.coms_e_bar = tuple(coms_e)
-        self.c_e_bar = tuple(c_e)
         return NameData(self.name, self.b_bar)

@@ -113,13 +113,18 @@ class BGV:
         self.__recv_share("c_e_bar")
         self.__recv_share("b")
         self.__recv_share("b_bar")
-
-        data = self.__recv_value("coms_s_bar")
-        self.__share_data("coms_s_bar", data)
+        self.__recv_share("coms_s_bar")
         for i in self.participants:
             i.check_open()
+            i.reconstruct_b()
 
     def DKGen(self):
+        """
+        Key generation method, if any of the methods return false they will
+        throw an error. If all succeed we return a public key and a secret key
+        for each participant.
+
+        """
         self.__assert_value_matches_hash("a")
         self.__compute_b()
         self.__assign_shares("s")
