@@ -46,10 +46,10 @@ class BGVParticipant:
                 raise RuntimeError(str(i))
         self.a = 0
         for i in aj:
-            self.a = self.cypari(self.a + i)
+            self.a = self.a + i
         self.siprime = self.PH.gaussian_array(1, 1)
         self.eiprime = self.PH.gaussian_array(1, 1)
-        self.bi = self.cypari(self.a * self.siprime + self.p * self.eiprime)
+        self.bi = self.a * self.siprime + self.p * self.eiprime
         hbi = hash(self.bi)
         return hbi
 
@@ -73,7 +73,7 @@ class BGVParticipant:
             comsij.append(self.comm_scheme.commit(Commit(sij[i], ps)))
             peij.append(pe)
             comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
-            bij.append(self.cypari(self.a * sij[i] + self.p * eij[i]))
+            bij.append(self.a * sij[i] + self.p * eij[i])
         proof_sk = self.RP.prove_sk(psiprime, peiprime, psij, peij, self.a, self.p)
         return (
             self.comsi,
@@ -111,7 +111,7 @@ class BGVParticipant:
                 ):
                     raise RuntimeError(str(i))
                 if not self.comm_scheme.open(
-                    CommitOpen(c=comsjk[i][self.i], f=1, m=sjk[i], r=psjk[i])
+                    CommitOpen(c=comsjk[i][self.i - 1], f=1, m=sjk[i], r=psjk[i])
                 ):
                     raise RuntimeError(str(i))
                 if not self.RP.verify_sk(
@@ -130,14 +130,14 @@ class BGVParticipant:
         si = 0
         psi = 0
         for i in range(self.n):
-            b = self.cypari(b + bj[i])
-            si = self.cypari(si + sjk[i])
-            psi = self.cypari(psi + psjk[i])
+            b = b + bj[i]
+            si = si + sjk[i]
+            psi = psi + psjk[i]
         comsk = []
         for i in range(self.n):
             temp = 0
             for j in range(self.n):
-                temp = self.cypari(temp + comsjk[i][j])
+                temp = temp + comsjk[i][j]
             comsk.append(temp)
         self.b = b
         self.pk = (self.a, b, comsk)
@@ -147,9 +147,9 @@ class BGVParticipant:
     def enc(self, m):
         eprime = self.PH.gaussian_array(1, 1)
         ebis = self.PH.gaussian_array(1, 1)
-        mprime = self.comm_scheme.cypari.liftall(m) * self.comm_scheme.cypari.Mod(
-            1, self.q
-        )
+        print("m: ", m)
+        mprime = self.cypari.liftall(m) * self.cypari.Mod(1, self.q)
+        print("mprime: ", mprime)
         r = self.PH.gaussian_array(1, 1)
         peprime = self.comm_scheme.r_commit()
         pebis = self.comm_scheme.r_commit()
@@ -159,12 +159,13 @@ class BGVParticipant:
         com_ebis = self.comm_scheme.commit(Commit(ebis, pebis))
         com_r = self.comm_scheme.commit(Commit(r, pr))
         com_m = self.comm_scheme.commit(Commit(mprime, pm))
-        u = self.comm_scheme.cypari(self.a * r + self.p * eprime)
-        v = self.comm_scheme.cypari(self.b * r + self.p * ebis + mprime)
+        u = self.a * r + self.p * eprime
+        v = self.b * r + self.p * ebis + mprime
+        print("v: ", v)
         proof_ctx = self.RP.prove_enc(pr, pm, peprime, pebis, self.a, self.b, self.p)
         return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
 
-    def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis):
+    def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, sk):
         if not self.RP.verify_enc(
             *proof_ctx,
             self.a,
@@ -178,10 +179,8 @@ class BGVParticipant:
             com_ebis,
         ):
             return 0
-        ptx = self.cypari(v - self.ski[0] * u)
-        ptx = self.comm_scheme.cypari.liftall(ptx) * self.comm_scheme.cypari.Mod(
-            1, 2029
-        )
+        ptx = v - sk * u
+        ptx = self.cypari.liftall(ptx) * self.cypari.Mod(1, 2029)
         return ptx
 
     def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
@@ -199,13 +198,14 @@ class BGVParticipant:
         ):
             print("fail")
             raise ValueError()
-        lagrange = 0
+        lagrange = 1
         for j in U:
             if j != self.i:
-                lagrange += j * self.PH.inversion[(j - self.i)]
-        m_i = self.cypari(lagrange * self.ski[0] * u)
+                print("J: ", j)
+                lagrange *= j * pow((j - self.i), self.q - 2, self.q)
+        m_i = lagrange * self.ski[0] * u
         E_i = self.PH.uniform_array(1, 1)
-        d_i = self.cypari(m_i + self.p * E_i)
+        d_i = m_i + self.p * E_i
         pE_i = self.comm_scheme.r_commit()
         com_Ei = self.comm_scheme.commit(Commit(E_i, pE_i))
         proof_dsi = self.RP.prove_ds(self.ski[1], pE_i, u, lagrange, self.p)
@@ -222,6 +222,6 @@ class BGVParticipant:
                 return False
         sum_ds = 0
         for i in t_decs:
-            sum_ds = self.cypari(sum_ds + i[3])
-        ptx = self.cypari(v - sum_ds)
+            sum_ds = sum_ds + i[3]
+        ptx = self.cypari.liftall(v - sum_ds) * self.cypari.Mod(1, self.p)
         return ptx

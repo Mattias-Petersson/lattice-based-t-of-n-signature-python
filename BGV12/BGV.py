@@ -14,7 +14,7 @@ class BGV:
         self.SSS = SSS
         self.RP = RP
         self.t = 2
-        for i in range(n):
+        for i in range(1, n + 1):
             self.participants.append(
                 BGVParticipant(
                     t,
@@ -102,12 +102,17 @@ class BGV:
         for i in range(0, self.t):
             t_decs.append(self.participants[i].t_dec(*enc, range(1, self.t + 1)))
         print(len(t_decs))
-        ptx = self.participants[0].comb(enc[1], t_decs)
-        ptx = self.comm_scheme.cypari.liftall(ptx) * self.comm_scheme.cypari.Mod(
-            1, 2029
+        sk = self.SSS.reconstruct_poly(
+            [self.participants[0].ski[0], self.participants[3].ski[0]],
+            [self.participants[0].i, self.participants[3].i],
         )
+        ptx = self.participants[0].comb(enc[1], t_decs)
+        ptx1 = self.participants[0].dec(*enc, sk)
         print("ptx: ", ptx)
+        print("ptx1: ", ptx1)
         print(bool(self.comm_scheme.polynomial.cypari(m == ptx)))
+        print(bool(self.comm_scheme.polynomial.cypari(m == ptx1)))
+        print(bool(self.comm_scheme.polynomial.cypari(ptx1 == ptx)))
         return bool(self.comm_scheme.polynomial.cypari(m == ptx))
 
 
@@ -116,5 +121,4 @@ zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)
 bgv = BGV(c, zk, s, r)
-c.cypari.allocatemem(10**10)
 bgv.run()
