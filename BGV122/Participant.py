@@ -1,7 +1,8 @@
 import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, CommitOpen, NameData, SecretSharePoly
+from type.classes import Commit, NameData, SecretSharePoly
+import itertools
 
 
 class Participant:
@@ -72,58 +73,50 @@ class Participant:
         """
         return Commit(commitment, self.comm_scheme.r_commit())
 
-    def reconstruct(self, shares: list[SecretSharePoly]):
-        recon = self.secret_share.reconstruct_poly(shares)
-        return NameData(self.name, recon == self.s)
+    def make_secrets(self):
+        def make_b(s, e):
+            if s.x != e.x:
+                raise ValueError()
+            return SecretSharePoly(s.x, self.sum_a * s.p + self.p * e.p)
 
-    def __commit_to_shares(self, share) -> tuple[NameData, NameData]:
-        comm = NameData(share.name, self.__commit(share.share.p))
-        c = NameData(share.name, self.comm_scheme.commit(comm.data))
-        return comm, c
+        add_val = lambda name, val: vals.get(name, []) + [val]
+        to_tuple = lambda attr: tuple(vals[attr])
 
-    def check_open(self):
-        c = dict()
-        for i in self.others["c_s_bar"]:
-            for j in i.data:
-                [c[j.name]] = c.get(j.name, []) + [j.data]
-        for i in self.others["coms_s_bar"]:
-            for j in i.data:
-                if not self.comm_scheme.open(CommitOpen(c[j.name], j.data)):
-                    raise ValueError(
-                        f"User {self.name} did not get a proper opening for {j.name}"
-                    )
-
-    def reconstruct_b(self):
-        raise NotImplementedError()
-
-    def bar_vars(self) -> NameData:
-        """
-        Commits to each secret share s and e, as well as calculate b for these
-        as a * s + p * e.
-        """
-        calc_b_bar = lambda s, e: self.sum_a * s + self.p * e
-        add_to_vals = lambda name, value: vals.get(name, []) + [value]
-        to_tuple = lambda name: tuple[NameData, ...](vals[name])
+        self.s_bar = self.secret_share.share_poly(self.s)
+        self.e_bar = self.secret_share.share_poly(self.e)
         vals = dict()
-        for s, e in zip(self.others["shares_s"], self.others["shares_e"]):
-            if s.name != e.name:
+        for s, e in zip(self.s_bar, self.e_bar):
+            vals["b_bar"] = add_val("b_bar", make_b(s, e))
+
+            com_s = self.__commit(s.p)
+            vals["coms_s_bar"] = add_val("coms_s_bar", com_s)
+            vals["c_s_bar"] = add_val("c_s", self.comm_scheme.commit(com_s))
+
+            com_e = self.__commit(e.p)
+            vals["coms_e_bar"] = add_val("coms_e_bar", com_e)
+            vals["c_e_bar"] = add_val("c_e", self.comm_scheme.commit(com_e))
+
+        self.b_bar = to_tuple("b_bar")
+        self.coms_s_bar = to_tuple("coms_s_bar")
+        self.c_s_bar = to_tuple("c_s_bar")
+        self.coms_e_bar = to_tuple("coms_e_bar")
+        self.c_e_bar = to_tuple("c_e_bar")
+
+    def reconstruct(self, data, t):
+        """
+        Attempts to reconstruct this participant's own b, using the shares
+        provided to them from the BGV class in the data param. All possible
+        combinations are tried, as all should return true. If any combination
+        returns false we print out the user for which the process failed, and
+        which key shares were responsible.
+        """
+        combs = list(itertools.combinations([i for i in data], t))
+
+        for c in combs:
+            pol = self.secret_share.reconstruct_poly([i.data for i in c])
+            if pol != self.b:
                 raise ValueError(
-                    "Index j does not map to the same user when creating b_bar."
+                    "Aborting. Reconstructing b failed for user {}, reconstructing polynomials for users: {}".format(
+                        self.name, [i.name for i in c]
+                    )
                 )
-            vals["b_bars"] = add_to_vals(
-                "b_bars", NameData(s.name, calc_b_bar(s.share.p, e.share.p))
-            )
-            s_temp = self.__commit_to_shares(s)
-            vals["coms_s"] = add_to_vals("coms_s", s_temp[0])
-            vals["c_s"] = add_to_vals("c_s", s_temp[1])
-            e_temp = self.__commit_to_shares(e)
-            vals["coms_e"] = add_to_vals("coms_e", e_temp[0])
-            vals["c_e"] = add_to_vals("c_e", e_temp[1])
-
-        self.b_bar = to_tuple("b_bars")
-        self.coms_s_bar = to_tuple("coms_s")
-        self.c_s_bar = to_tuple("c_s")
-        self.coms_e_bar = to_tuple("coms_e")
-        self.c_e_bar = to_tuple("c_e")
-
-        return NameData(self.name, self.b_bar)

@@ -5,13 +5,14 @@ from type.classes import NameData, SecretShareSplit
 
 
 class BGV:
-    def __init__(self, n: int = 4, q: int = 2477, N: int = 150):
+    def __init__(self, t: int = 2, n: int = 4, q: int = 2477, N: int = 150):
+        self.t = t
         self.n = n
         self.q = q
         self.N = N
         self.comm_scheme = CommitmentScheme(q=self.q, N=self.N)
         self.cypari = self.comm_scheme.cypari
-        self.secret_share = SecretShare((2, self.n), self.q)
+        self.secret_share = SecretShare((self.t, self.n), self.q)
         self.participants: tuple[Participant, ...] = tuple(
             Participant(self.comm_scheme, self.secret_share) for _ in range(n)
         )
@@ -19,20 +20,18 @@ class BGV:
 
     def __recv_value(self, attr):
         try:
-            return tuple(i.share_attr(attr) for i in self.participants)
+            return [i.share_attr(attr) for i in self.participants]
         except Exception as e:
             raise ValueError(
                 f"Invalid attribute name in class Participant: {attr}, {e}"
             )
 
     def __recv_value_shared(self, attr):
-        return tuple(
-            i.share_others_attr("shares_" + attr) for i in self.participants
-        )
+        return tuple(i.share_others_attr(attr) for i in self.participants)
 
     def __share_data(self, attr, data):
         for i in self.participants:
-            res = tuple(filter(lambda p: p.name == i.name, data))
+            res = tuple(filter(lambda p: p.name != i.name, data))
             i.recv_from_other(attr, res)
 
     def __recv_share(self, attr_name: str):
@@ -60,63 +59,43 @@ class BGV:
             i.make_b()
         self.__recv_share("b_hash")
 
-    def __assign_shares(self, attr: str):
-        """
-        We let s_i and e_i be visible from this class. We then create a
-        chain where each participant's polynomial gets split into shares
-        with their associated name as the "owner" of the share. This then
-        gets distributed to all others who are "holders". We then set a
-        param in each participant for their array of secret-shares that
-        they are holding.
-        """
-        named_shares = [
-            NameData(p.name, self.secret_share.share_poly(p.data))
-            for p in self.__recv_value(attr)
-        ]
-        temp_dict = dict()
-        for share in named_shares:
-            for data, name in zip(share.data, self.names):
-                temp_dict[name] = temp_dict.get(name, []) + [
-                    SecretShareSplit(share.name, name, data)
-                ]
+    def __share_b_bar(self):
         for i in self.participants:
-            i.recv_from_other("shares_" + attr, temp_dict[i.name])
+            i.make_secrets()
+        data = self.__recv_value("b_bar")
+        shares = dict()
+        for i in data:
+            for j, name in zip(i.data, self.names):
+                shares[name] = shares.get(name, []) + [NameData(i.name, j)]
+        for part in self.participants:
+            part.recv_from_other("b_bar", shares[part.name])
 
-    def reconstruct_shares(self, attr: str):
-        """
-        Each party sends in their part of the shared secrets, allowing
-        us to recreate all of them. Send back the shares corresponding
-        to the participant's own 's', they reassure this is correct.
-        """
-        t = self.__recv_value_shared(attr)
-        reconstructed = dict()
-        for part in t:
-            for p in part.data:
-                reconstructed[p.name] = reconstructed.get(p.name, []) + [
-                    p.share
-                ]
-        for i in self.participants:
-            if not i.reconstruct(reconstructed[i.name]):
-                raise ValueError(
-                    f"Aborting. Failed to reconstruct using their shares for participant {i.name}"
-                )
+    def __share_s_bar(self):
+        data = self.__recv_value("coms_s_bar")
+        shares = dict()
+        for i in data:
+            for j, name in zip(i.data, self.names):
+                shares[name] = shares.get(name, []) + [NameData(i.name, j)]
+        for part in self.participants:
+            part.recv_from_other("s_bar", shares[part.name])
 
     def __broadcast(self):
-        """
-        Broadcast all com_s, com_e, com_sbar, com_ebar
-        """
-        for i in self.participants:
-            i.bar_vars()
         self.__recv_share("c_s")
         self.__recv_share("c_e")
         self.__recv_share("c_s_bar")
         self.__recv_share("c_e_bar")
         self.__recv_share("b")
-        self.__recv_share("b_bar")
-        self.__recv_share("coms_s_bar")
+
+    def __recreate(self):
+        data = self.__recv_value_shared("b_bar")
+        recreated = dict()
+        for i in data:
+            for j in i.data:
+                recreated[j.name] = recreated.get(j.name, []) + [
+                    NameData(i.name, j.data)
+                ]
         for i in self.participants:
-            i.check_open()
-            i.reconstruct_b()
+            i.reconstruct(recreated[i.name], self.t)
 
     def DKGen(self):
         """
@@ -127,12 +106,11 @@ class BGV:
         """
         self.__assert_value_matches_hash("a")
         self.__compute_b()
-        self.__assign_shares("s")
-        self.__assign_shares("e")
+        self.__share_b_bar()
         self.__broadcast()
         self.__assert_value_matches_hash("b")
-        self.reconstruct_shares("s")
-        self.reconstruct_shares("e")
+        self.__recreate()
+        self.__share_s_bar()
 
 
 if __name__ == "__main__":
