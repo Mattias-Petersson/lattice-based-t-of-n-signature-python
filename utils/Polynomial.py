@@ -27,13 +27,6 @@ class Polynomial:
 
         self.N = N
         self.q = q
-        self.inversion = dict()
-        self.inversion[1] = 1
-        self.inversion[2] = 2147483385
-        self.inversion[3] = 1431655590
-        self.inversion[-1] = -1
-        self.inversion[-2] = -2147483385
-        self.inversion[-3] = -1431655590
 
     def uniform_element(self, bound: int = 0) -> cypari2.gen.Gen:
         if bound == 0:

@@ -3,6 +3,7 @@ from type.classes import TN, SecretSharePoly
 from utils.Polynomial import Polynomial
 import cypari2
 import numpy as np
+import math
 
 
 class SecretShare:
@@ -40,9 +41,9 @@ class SecretShare:
 
     def __reconstruct(self, res_arr, x_arr):
         norm_sum = lambda j, i: (
-            j * self.polynomial.inversion[(j - i)] if i != j else 0
+            (j * pow(j - i, self.q - 2, self.q)) if i != j else 1
         )
-        sum_arr = [sum(norm_sum(j, i) for j in x_arr) for i in x_arr]
+        sum_arr = [math.prod(norm_sum(j, i) for j in x_arr) for i in x_arr]
         return sum([int(s) * r for s, r in zip(sum_arr, res_arr)])
 
     def share_poly(self, poly) -> list[SecretSharePoly]:
