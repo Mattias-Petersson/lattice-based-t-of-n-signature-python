@@ -1,13 +1,13 @@
 import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, NameData, SecretSharePoly
+from type.classes import Commit, CommitOpen, NameData, SecretSharePoly
 import itertools
 
 
 class Participant:
     def __init__(
-        self, comm_scheme: CommitmentScheme, secret_share: SecretShare
+        self, comm_scheme: CommitmentScheme, secret_share: SecretShare, p: int
     ):
         self.name = (
             np.random.choice(["Alice", "Bob"])
@@ -19,7 +19,7 @@ class Participant:
             n=n, sigma=self.comm_scheme.sigma
         )
 
-        self.p = 2029
+        self.p = p
         self.comm_scheme = comm_scheme
         self.secret_share = secret_share
         self.polynomial = self.comm_scheme.polynomial
@@ -90,11 +90,10 @@ class Participant:
 
             com_s = self.__commit(s.p)
             vals["coms_s_bar"] = add_val("coms_s_bar", com_s)
-            vals["c_s_bar"] = add_val("c_s", self.comm_scheme.commit(com_s))
-
+            vals["c_s_bar"] = add_val("c_s_bar", self.comm_scheme.commit(com_s))
             com_e = self.__commit(e.p)
             vals["coms_e_bar"] = add_val("coms_e_bar", com_e)
-            vals["c_e_bar"] = add_val("c_e", self.comm_scheme.commit(com_e))
+            vals["c_e_bar"] = add_val("c_e_bar", self.comm_scheme.commit(com_e))
 
         self.b_bar = to_tuple("b_bar")
         self.coms_s_bar = to_tuple("coms_s_bar")
@@ -110,13 +109,35 @@ class Participant:
         returns false we print out the user for which the process failed, and
         which key shares were responsible.
         """
-        combs = list(itertools.combinations([i for i in data], t))
-
+        combs = list(itertools.combinations(data, t))
         for c in combs:
             pol = self.secret_share.reconstruct_poly([i.data for i in c])
             if pol != self.b:
                 raise ValueError(
-                    "Aborting. Reconstructing b failed for user {}, reconstructing polynomials for users: {}".format(
-                        self.name, [i.name for i in c]
-                    )
+                    f"Aborting. Reconstructing b failed for user {self.name}"
+                    + f", reconstructing polynomials for users: {[i.name for i in c]}",
                 )
+
+    def check_open(self):
+        for c, com in zip(self.others["c_s_bar"], self.others["coms_s_bar"]):
+            if c.name != com.name:
+                raise ValueError(
+                    "Aborting. Name mismatch for participants."
+                    + f"{self.name}: {c.name, com.name}"
+                )
+            if not self.comm_scheme.open(CommitOpen(c.data, com.data)):
+                raise ValueError(
+                    f"Aborting. User {self.name} got an invalid opening for "
+                    + f"user {c.name}"
+                )
+
+    def generate_final(self):
+        self.sum_b = self.b + sum([i.data for i in self.others["b"]])
+        new_com = 0
+        new_r = 0
+        for com in self.others["coms_s_bar"]:
+            new_com += com.data.m
+            new_r += com.data.r
+        self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
+        self.sk = Commit(new_com, new_r)
+        return NameData(self.name, self.sk)
