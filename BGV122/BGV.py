@@ -1,20 +1,29 @@
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.Participant import Participant
-from type.classes import NameData, SecretShareSplit
+from type.classes import NameData
 
 
 class BGV:
-    def __init__(self, t: int = 2, n: int = 4, q: int = 2477, N: int = 150):
+    def __init__(
+        self,
+        t: int = 2,
+        n: int = 4,
+        p: int = 2029,
+        q: int = 2**32 - 527,
+        N: int = 1024,
+    ):
         self.t = t
         self.n = n
         self.q = q
         self.N = N
+        self.p = p
         self.comm_scheme = CommitmentScheme(q=self.q, N=self.N)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare((self.t, self.n), self.q)
         self.participants: tuple[Participant, ...] = tuple(
-            Participant(self.comm_scheme, self.secret_share) for _ in range(n)
+            Participant(self.comm_scheme, self.secret_share, self.p)
+            for _ in range(n)
         )
         self.names = [i.name for i in self.participants]
 
@@ -62,31 +71,43 @@ class BGV:
     def __share_b_bar(self):
         for i in self.participants:
             i.make_secrets()
-        data = self.__recv_value("b_bar")
-        shares = dict()
-        for i in data:
-            for j, name in zip(i.data, self.names):
-                shares[name] = shares.get(name, []) + [NameData(i.name, j)]
-        for part in self.participants:
-            part.recv_from_other("b_bar", shares[part.name])
+        self.__share_partials("b_bar")
 
-    def __share_s_bar(self):
-        data = self.__recv_value("coms_s_bar")
+    def __share_partials(self, attr):
+        data = self.__recv_value(attr)
         shares = dict()
         for i in data:
             for j, name in zip(i.data, self.names):
                 shares[name] = shares.get(name, []) + [NameData(i.name, j)]
         for part in self.participants:
-            part.recv_from_other("s_bar", shares[part.name])
+            part.recv_from_other(attr, shares[part.name])
+
+    def __share_commits(self):
+        """
+        Shares the c which is the result of committing a Commit object between
+        all participants. Also shares said object for s_bar between all users.
+        Each participant then looks at their received values and checks if
+        all of them open successfully.
+        """
+        self.__share_partials("coms_s_bar")
+        self.__share_partials("c_s_bar")
+        self.__share_partials("c_e_bar")
+        for part in self.participants:
+            part.check_open()
 
     def __broadcast(self):
+        """
+        Broadcasts user-specific values between all participants.
+        """
         self.__recv_share("c_s")
         self.__recv_share("c_e")
-        self.__recv_share("c_s_bar")
-        self.__recv_share("c_e_bar")
         self.__recv_share("b")
 
     def __recreate(self):
+        """
+        Asserts that for all users, their b can be reconstructed from b_bars.
+        All combinations are tested for by each participant.
+        """
         data = self.__recv_value_shared("b_bar")
         recreated = dict()
         for i in data:
@@ -97,12 +118,25 @@ class BGV:
         for i in self.participants:
             i.reconstruct(recreated[i.name], self.t)
 
+    def __check_equiv(self, attr):
+        all_attr = [getattr(i, attr) for i in self.participants]
+        if len(set(all_attr)) != 1:
+            raise ValueError(f"Users did not get matching values for {attr}")
+        return all_attr.pop()
+
+    def __finalize(self):
+        secrets = []
+        for part in self.participants:
+            secrets.append(part.generate_final())
+        a = self.__check_equiv("sum_a")
+        b = self.__check_equiv("sum_b")
+        return a, b, secrets
+
     def DKGen(self):
         """
         Key generation method, if any of the methods return false they will
         throw an error. If all succeed we return a public key and a secret key
         for each participant.
-
         """
         self.__assert_value_matches_hash("a")
         self.__compute_b()
@@ -110,9 +144,10 @@ class BGV:
         self.__broadcast()
         self.__assert_value_matches_hash("b")
         self.__recreate()
-        self.__share_s_bar()
+        self.__share_commits()
+        return self.__finalize()
 
 
 if __name__ == "__main__":
     bgv = BGV()
-    bgv.DKGen()
+    a, b, sk_list = bgv.DKGen()
