@@ -7,20 +7,23 @@ from utils.Polynomial import Polynomial
 
 
 class BGV:
-    def __init__(self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024):
-        self.participants = []
+    def __init__(
+        self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024, p=2029
+    ):
+        self.participants: list[BGVParticipant] = []
         self.comm_scheme = comm_scheme
         self.ZK = ZK
         self.SSS = SSS
         self.RP = RP
         self.t = 2
+        self.p = p
         for i in range(1, n + 1):
             self.participants.append(
                 BGVParticipant(
                     t,
                     n,
                     0,
-                    2029,
+                    p,
                     q,
                     N,
                     i,
@@ -41,8 +44,11 @@ class BGV:
             haj.append(i[0])
             aj.append(i[1])
         hbj = []
+        self.sprime = 0
         for p in self.participants:
-            hbj.append(p.step2(haj, aj))
+            temp = p.step2(haj, aj)
+            hbj.append(temp[0])
+            self.sprime += temp[1]
         step3 = []
         for p in self.participants:
             step3.append(p.step3(hbj))
@@ -65,6 +71,7 @@ class BGV:
             proof_sk.append(i[6])
             sjk.append(i[7])
             psjk.append(i[8])
+        self.bs = bj
         step4 = []
         for i in range(len(self.participants)):
             p = self.participants[i]
@@ -80,40 +87,62 @@ class BGV:
                 sk.append(sjk[j][i])
                 psk.append(psjk[j][i])
             step4.append(
-                p.step4(comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk)
+                p.step4(
+                    comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk
+                )
             )
-        print(bool(self.comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0])))
-        print(bool(self.comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1])))
+        print(
+            bool(self.comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0]))
+        )
+        print(
+            bool(self.comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1]))
+        )
         for i in range(len(step4[0][2])):
             print(
                 bool(
-                    self.comm_scheme.polynomial.cypari(step4[0][2][i] == step4[1][2][i])
+                    self.comm_scheme.polynomial.cypari(
+                        step4[0][2][i] == step4[1][2][i]
+                    )
                 )
             )
         return step4[0]
 
     def run(self):
         self.keyGen()
-        PH = Polynomial(1024, 2029)
-        m = PH.uniform_array(1)
-        print(m)
+        PH = Polynomial(1024, self.p)
+        m = PH.in_rq(PH.uniform_array(1))
         enc = self.participants[0].enc(m)
         t_decs = []
         for i in range(0, self.t):
-            t_decs.append(self.participants[i].t_dec(*enc, range(1, self.t + 1)))
+            t_decs.append(
+                self.participants[i].t_dec(*enc, range(1, self.t + 1))
+            )
         print(len(t_decs))
         sk = self.SSS.reconstruct_poly(
             [self.participants[0].ski[0], self.participants[3].ski[0]],
             [self.participants[0].i, self.participants[3].i],
         )
-        ptx = self.participants[0].comb(enc[1], t_decs)
-        ptx1 = self.participants[0].dec(*enc, sk)
-        print("ptx: ", ptx)
-        print("ptx1: ", ptx1)
-        print(bool(self.comm_scheme.polynomial.cypari(m == ptx)))
-        print(bool(self.comm_scheme.polynomial.cypari(m == ptx1)))
-        print(bool(self.comm_scheme.polynomial.cypari(ptx1 == ptx)))
-        return bool(self.comm_scheme.polynomial.cypari(m == ptx))
+        ptx = PH.in_rq(self.participants[0].comb(enc[1], t_decs))
+        ptx1 = PH.in_rq(self.participants[0].dec(*enc, sk))
+        b = self.participants[0].pk[1]
+        bsum = sum(self.bs)
+        a = self.participants[0].pk[0]
+        bprime = self.comm_scheme.cypari.liftall(
+            b
+        ) * self.comm_scheme.cypari.Mod(1, self.p)
+        aprime = self.comm_scheme.cypari.liftall(
+            a
+        ) * self.comm_scheme.cypari.Mod(1, self.p)
+        skprime = self.comm_scheme.cypari.liftall(
+            sk
+        ) * self.comm_scheme.cypari.Mod(1, self.p)
+        print(skprime == self.sprime)
+        print(PH.in_rq(aprime) * PH.in_rq(skprime) == PH.in_rq(bprime))
+        print(b == bsum)
+        print(m == ptx)
+        print(m == ptx1)
+        print(ptx1 == ptx)
+        return bool(m == ptx)
 
 
 c = CommitmentScheme()

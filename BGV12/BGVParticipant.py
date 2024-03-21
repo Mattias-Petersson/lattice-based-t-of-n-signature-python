@@ -51,7 +51,7 @@ class BGVParticipant:
         self.eiprime = self.PH.gaussian_array(1, 1)
         self.bi = self.a * self.siprime + self.p * self.eiprime
         hbi = hash(self.bi)
-        return hbi
+        return (hbi, self.siprime, self.bi)
 
     def step3(self, hbj):
         self.hbj = hbj
@@ -74,7 +74,9 @@ class BGVParticipant:
             peij.append(pe)
             comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
             bij.append(self.a * sij[i] + self.p * eij[i])
-        proof_sk = self.RP.prove_sk(psiprime, peiprime, psij, peij, self.a, self.p)
+        proof_sk = self.RP.prove_sk(
+            psiprime, peiprime, psij, peij, self.a, self.p
+        )
         return (
             self.comsi,
             self.comei,
@@ -96,43 +98,45 @@ class BGVParticipant:
         bj,
         bjk,
         proofs_sk,
-        sjk,
-        psjk,
+        sji,
+        psji,
     ):
-        for i in range(self.n):
-            if i != self.i:
-                if self.hbj[i] != hash(bj[i]):
-                    raise RuntimeError(str(i) + " wrongHash")
+        for j in range(self.n):
+            if j != self.i - 1:
+                if self.hbj[j] != hash(bj[j]):
+                    raise RuntimeError(str(j) + " wrongHash")
                 smaller_bjk = []
-                for j in range(self.t):
-                    smaller_bjk.append(bjk[i][j])
-                if bj[i] != self.SSS.reconstruct_poly(
+                for k in range(self.t):
+                    smaller_bjk.append(bjk[j][k])
+                if bj[j] != self.SSS.reconstruct_poly(
                     smaller_bjk, range(1, self.t + 1)
                 ):
-                    raise RuntimeError(str(i))
+                    raise RuntimeError(str(j))
                 if not self.comm_scheme.open(
-                    CommitOpen(c=comsjk[i][self.i - 1], f=1, m=sjk[i], r=psjk[i])
+                    CommitOpen(
+                        c=comsjk[j][self.i - 1], f=1, m=sji[j], r=psji[j]
+                    )
                 ):
-                    raise RuntimeError(str(i))
+                    raise RuntimeError(str(j))
                 if not self.RP.verify_sk(
-                    *(proofs_sk[i]),
-                    bj[i],
-                    bjk[i],
+                    *(proofs_sk[j]),
+                    bj[j],
+                    bjk[j],
                     self.a,
                     self.p,
-                    comsj[i],
-                    comej[i],
-                    comsjk[i],
-                    comejk[i],
+                    comsj[j],
+                    comej[j],
+                    comsjk[j],
+                    comejk[j],
                 ):
-                    raise RuntimeError(str(i))
+                    raise RuntimeError(str(j))
         b = 0
         si = 0
         psi = 0
-        for i in range(self.n):
-            b = b + bj[i]
-            si = si + sjk[i]
-            psi = psi + psjk[i]
+        for j in range(self.n):
+            b = b + bj[j]
+            si = si + sji[j]
+            psi = psi + psji[j]
         comsk = []
         for i in range(self.n):
             temp = 0
@@ -140,16 +144,14 @@ class BGVParticipant:
                 temp = temp + comsjk[i][j]
             comsk.append(temp)
         self.b = b
-        self.pk = (self.a, b, comsk)
+        self.pk = (self.a, self.b, comsk)
         self.ski = (si, psi)
         return self.pk
 
     def enc(self, m):
         eprime = self.PH.gaussian_array(1, 1)
         ebis = self.PH.gaussian_array(1, 1)
-        print("m: ", m)
         mprime = self.cypari.liftall(m) * self.cypari.Mod(1, self.q)
-        print("mprime: ", mprime)
         r = self.PH.gaussian_array(1, 1)
         peprime = self.comm_scheme.r_commit()
         pebis = self.comm_scheme.r_commit()
@@ -161,8 +163,25 @@ class BGVParticipant:
         com_m = self.comm_scheme.commit(Commit(mprime, pm))
         u = self.a * r + self.p * eprime
         v = self.b * r + self.p * ebis + mprime
-        print("v: ", v)
-        proof_ctx = self.RP.prove_enc(pr, pm, peprime, pebis, self.a, self.b, self.p)
+        print(ebis)
+        print(self.cypari.liftall(self.p * ebis) * self.cypari.Mod(1, self.p))
+        print("Hello")
+        print(eprime)
+        print(self.cypari.liftall(self.p * eprime) * self.cypari.Mod(1, self.p))
+        print("Hello")
+        proof_ctx = self.RP.prove_enc(
+            pr, pm, peprime, pebis, self.a, self.b, self.p
+        )
+        if v - self.b * r - self.p * ebis != mprime:
+            raise ValueError
+        if self.cypari.liftall(v - self.b * r) * self.cypari.Mod(
+            1, self.p
+        ) != self.cypari.liftall(
+            v - self.b * r - self.p * ebis
+        ) * self.cypari.Mod(
+            1, self.p
+        ):
+            raise ValueError
         return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
 
     def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, sk):
@@ -180,7 +199,7 @@ class BGVParticipant:
         ):
             return 0
         ptx = v - sk * u
-        ptx = self.cypari.liftall(ptx) * self.cypari.Mod(1, 2029)
+        ptx = self.cypari.liftall(ptx) * self.cypari.Mod(1, self.p)
         return ptx
 
     def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
@@ -201,7 +220,6 @@ class BGVParticipant:
         lagrange = 1
         for j in U:
             if j != self.i:
-                print("J: ", j)
                 lagrange *= j * pow((j - self.i), self.q - 2, self.q)
         m_i = lagrange * self.ski[0] * u
         E_i = self.PH.uniform_array(1, 1)
@@ -219,7 +237,7 @@ class BGVParticipant:
     def comb(self, v, t_decs):
         for i in t_decs:
             if not self.RP.verify_ds(*(i[0]), self.p, i[1], i[2], i[3]):
-                return False
+                raise ValueError
         sum_ds = 0
         for i in t_decs:
             sum_ds = sum_ds + i[3]

@@ -57,3 +57,12 @@ class SecretShare:
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.reconstruct(i, x_arr) for i in polys]
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
+
+
+# PH = Polynomial()
+# SSS = SecretShare((2, 4), PH.q)
+# m = PH.gaussian_array(1, 50)
+# arr = SSS.share_poly(m)
+# for i in range(len(arr)):
+#     for j in range(len(arr)):
+#         print(SSS.reconstruct_poly([arr[i], arr[j]], [i + 1, j + 1]) == m)
