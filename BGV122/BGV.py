@@ -1,7 +1,9 @@
+import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.Participant import Participant
 from type.classes import NameData, Sk
+from utils.Polynomial import Polynomial
 
 
 class BGV:
@@ -79,6 +81,7 @@ class BGV:
         shares = dict()
         for i in data:
             for j, name in zip(i.data, self.names):
+                print(name)
                 shares[name] = shares.get(name, []) + [NameData(i.name, j)]
         for part in self.participants:
             part.recv_from_other(attr, shares[part.name])
@@ -135,7 +138,8 @@ class BGV:
         self.a = self.__check_equiv("sum_a")
         self.b = self.__check_equiv("sum_b")
         secret_keys: tuple[Sk, ...] = tuple(keys["sk"])
-
+        print(secret_keys[0].commit == secret_keys[1].commit)
+        print(len(set([i.commit for i in secret_keys])))
         return keys["pk"], secret_keys
 
     def DKGen(self):
@@ -154,40 +158,43 @@ class BGV:
         return self.__finalize()
 
     def enc(self, m):
-        r, e_prime, e_bis = [
-            self.polynomial.gaussian_element(self.comm_scheme.sigma)
-            for _ in range(3)
-        ]
+        r = self.polynomial.gaussian_element(1)
+        e_prime = self.polynomial.gaussian_element(1)
+        e_bis = self.polynomial.gaussian_element(1)
+        mprime = self.cypari.liftall(m) * self.cypari.Mod(1, self.q)
         u = self.a * r + self.p * e_prime
-        v = self.b * r + self.p * e_bis + m
+        v = self.b * r + self.p * e_bis + mprime
         return u, v
 
     def t_dec(self, sk: tuple[Sk, ...], u):
-        lagrange: list[int] = self.secret_share.lagrange([i.x for i in sk])
-        mi = [coeff * com.commit.m * u for coeff, com in zip(lagrange, sk)]
-
-        E = [
-            self.polynomial.gaussian_element(self.comm_scheme.kappa)
-            for _ in range(len(lagrange))
-        ]
-        d = [m + self.p * e for m, e in zip(mi, E)]
-
+        lagrange = self.secret_share.lagrange([i.x for i in sk])
+        M = [coeff * com.commit.m * u for coeff, com in zip(lagrange, sk)]
+        E = [self.polynomial.uniform_element(2) for _ in sk]
+        d = [m + self.p * e for m, e in zip(M, E)]
         return d
 
     def comb(self, v, d):
-        d_sum = sum(d)
-        return self.cypari.liftall(v - d_sum) * self.cypari.Mod(1, self.p)
+        sum_ds = sum(d)
+        ptx = self.cypari.liftall(
+            v
+            - sum_ds
+            + self.cypari.Pol(
+                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
+            )
+        ) * self.cypari.Mod(1, self.p)
+        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
+        return ptx
 
 
 if __name__ == "__main__":
     bgv = BGV()
+    poly = Polynomial(bgv.N, q=bgv.p)
     public_keys, secret_keys = bgv.DKGen()
     results = dict()
-    for _ in range(100):
-        m = bgv.polynomial.uniform_element(bgv.p)
-        u, v = bgv.enc(m)
-        d = bgv.t_dec(secret_keys, u)
-        decrypted = bgv.comb(v, d)
-        res = decrypted == m
-        results[res] = results.get(res, 0) + 1
+    m = poly.uniform_element()
+    u, v = bgv.enc(m)
+    d = bgv.t_dec(secret_keys[:2], u)
+    decrypted = bgv.comb(v, d)
+    res = decrypted == m
+    results[res] = results.get(res, 0) + 1
     print(results)

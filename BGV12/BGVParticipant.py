@@ -249,7 +249,7 @@ class BGVParticipant:
             if j != self.i:
                 lagrange *= j * pow((j - self.i), self.q - 2, self.q)
         m_i = lagrange * self.ski[0] * u
-        E_i = self.PH.uniform_array(1, 1)
+        E_i = self.PH.uniform_array(1, 2)
         d_i = m_i + self.p * E_i
         pE_i = self.comm_scheme.r_commit()
         com_Ei = self.comm_scheme.commit(Commit(E_i, pE_i))

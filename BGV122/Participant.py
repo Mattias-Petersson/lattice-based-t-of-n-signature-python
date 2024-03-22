@@ -135,6 +135,7 @@ class Participant:
         self.sum_b = self.b + sum([i.data for i in self.others["b"]])
         new_com = 0
         new_r = 0
+        print(self.others["coms_s_bar"])
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
