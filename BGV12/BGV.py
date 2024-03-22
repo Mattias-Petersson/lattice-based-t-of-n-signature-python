@@ -118,30 +118,7 @@ class BGV:
                 self.participants[i].t_dec(*enc, range(1, self.t + 1))
             )
         print(len(t_decs))
-        sk = self.SSS.reconstruct_poly(
-            [self.participants[0].ski[0], self.participants[3].ski[0]],
-            [self.participants[0].i, self.participants[3].i],
-        )
         ptx = PH.in_rq(self.participants[0].comb(enc[1], t_decs))
-        ptx1 = PH.in_rq(self.participants[0].dec(*enc, sk))
-        b = self.participants[0].pk[1]
-        bsum = sum(self.bs)
-        a = self.participants[0].pk[0]
-        bprime = self.comm_scheme.cypari.liftall(
-            b
-        ) * self.comm_scheme.cypari.Mod(1, self.p)
-        aprime = self.comm_scheme.cypari.liftall(
-            a
-        ) * self.comm_scheme.cypari.Mod(1, self.p)
-        skprime = self.comm_scheme.cypari.liftall(
-            sk
-        ) * self.comm_scheme.cypari.Mod(1, self.p)
-        print(skprime == self.sprime)
-        print(PH.in_rq(aprime) * PH.in_rq(skprime) == PH.in_rq(bprime))
-        print(b == bsum)
-        print(m == ptx)
-        print(m == ptx1)
-        print(ptx1 == ptx)
         return bool(m == ptx)
 
 
@@ -150,4 +127,4 @@ zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)
 bgv = BGV(c, zk, s, r)
-bgv.run()
+print(bgv.run())

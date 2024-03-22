@@ -1,3 +1,4 @@
+import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from BDLOP16.RelationProofs import RelationProver
 from SecretSharing.SecretShare import SecretShare
@@ -148,6 +149,42 @@ class BGVParticipant:
         self.ski = (si, psi)
         return self.pk
 
+    def step5(self):
+        ai = self.PH.uniform_array(1)
+        hai = hash(ai)
+        return (hai, ai)
+
+    def step6(self, aj, haj):
+        a = 0
+        for j in range(len(aj)):
+            if hash(aj[j]) != haj:
+                raise ValueError(j)
+            a += aj[j]
+        self.ats = [a, 1]
+        si1 = self.PH.gaussian_array(1, 1)
+        si2 = self.PH.gaussian_array(1, 1)
+        self.si = [si1, si2]
+        self.yi = [self.ats[0] * si1, si2]
+        return hash(self.y)
+
+    def step7(self, hyj):
+        self.hyj = hyj
+        ctx_si = [self.enc(self.si[0]), self.enc(self.si[1])]
+        # TODO: proof_si
+        return (self.yi, ctx_si)
+
+    def step8(self, yj, ctx_sj):
+        self.y = [0, 0]
+        ctx_s = [0, 0]
+        for j in range(len(yj)):
+            if hash(yj[j]) != self.hyj[j]:
+                raise ValueError(j)
+            # TODO: verify proof_sj
+            self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
+            ctx_s = [ctx_s[0] + ctx_sj[j][0], ctx_s[1] + ctx_sj[j][1]]
+        self.pkts = (self.ats, self.y)
+        return self.pkts
+
     def enc(self, m):
         eprime = self.PH.gaussian_array(1, 1)
         ebis = self.PH.gaussian_array(1, 1)
@@ -163,25 +200,9 @@ class BGVParticipant:
         com_m = self.comm_scheme.commit(Commit(mprime, pm))
         u = self.a * r + self.p * eprime
         v = self.b * r + self.p * ebis + mprime
-        print(ebis)
-        print(self.cypari.liftall(self.p * ebis) * self.cypari.Mod(1, self.p))
-        print("Hello")
-        print(eprime)
-        print(self.cypari.liftall(self.p * eprime) * self.cypari.Mod(1, self.p))
-        print("Hello")
         proof_ctx = self.RP.prove_enc(
             pr, pm, peprime, pebis, self.a, self.b, self.p
         )
-        if v - self.b * r - self.p * ebis != mprime:
-            raise ValueError
-        if self.cypari.liftall(v - self.b * r) * self.cypari.Mod(
-            1, self.p
-        ) != self.cypari.liftall(
-            v - self.b * r - self.p * ebis
-        ) * self.cypari.Mod(
-            1, self.p
-        ):
-            raise ValueError
         return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
 
     def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, sk):
@@ -199,7 +220,13 @@ class BGVParticipant:
         ):
             return 0
         ptx = v - sk * u
-        ptx = self.cypari.liftall(ptx) * self.cypari.Mod(1, self.p)
+        ptx = self.cypari.liftall(
+            ptx
+            + self.cypari.Pol(
+                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
+            )
+        ) * self.cypari.Mod(1, self.p)
+        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
         return ptx
 
     def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
@@ -241,5 +268,12 @@ class BGVParticipant:
         sum_ds = 0
         for i in t_decs:
             sum_ds = sum_ds + i[3]
-        ptx = self.cypari.liftall(v - sum_ds) * self.cypari.Mod(1, self.p)
+        ptx = self.cypari.liftall(
+            v
+            - sum_ds
+            + self.cypari.Pol(
+                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
+            )
+        ) * self.cypari.Mod(1, self.p)
+        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
         return ptx
