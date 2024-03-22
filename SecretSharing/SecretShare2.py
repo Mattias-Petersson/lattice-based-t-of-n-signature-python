@@ -39,12 +39,15 @@ class SecretShare:
         random_polynomial = self.__generatePoly(s)
         return [self.cypari(random_polynomial)(x=i + 1) for i in range(self.n)]
 
-    def __reconstruct(self, res_arr, x_arr):
+    def lagrange(self, lst) -> list[int]:
         norm_sum = lambda j, i: (
             (j * pow(j - i, self.q - 2, self.q)) if i != j else 1
         )
-        sum_arr = [math.prod(norm_sum(j, i) for j in x_arr) for i in x_arr]
-        return sum([int(s) * r for s, r in zip(sum_arr, res_arr)])
+        return [math.prod(norm_sum(j, i) for j in lst) for i in lst]
+
+    def __reconstruct(self, res_arr, x_arr):
+        lagrange = self.lagrange(x_arr)
+        return sum([s * r for s, r in zip(lagrange, res_arr)])
 
     def share_poly(self, poly) -> list[SecretSharePoly]:
         """

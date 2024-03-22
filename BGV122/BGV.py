@@ -1,7 +1,7 @@
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.Participant import Participant
-from type.classes import NameData
+from type.classes import NameData, Sk
 
 
 class BGV:
@@ -19,6 +19,7 @@ class BGV:
         self.N = N
         self.p = p
         self.comm_scheme = CommitmentScheme(q=self.q, N=self.N)
+        self.polynomial = self.comm_scheme.polynomial
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare((self.t, self.n), self.q)
         self.participants: tuple[Participant, ...] = tuple(
@@ -125,12 +126,17 @@ class BGV:
         return all_attr.pop()
 
     def __finalize(self):
-        secrets = []
-        for part in self.participants:
-            secrets.append(part.generate_final())
-        a = self.__check_equiv("sum_a")
-        b = self.__check_equiv("sum_b")
-        return a, b, secrets
+        keys = dict()
+        for idx, part in enumerate(self.participants):
+            pk, sk = part.generate_final()
+            keys["sk"] = keys.get("sk", []) + [Sk(part.name, idx + 1, sk)]
+            keys["pk"] = keys.get("pk", []) + [pk]
+
+        self.a = self.__check_equiv("sum_a")
+        self.b = self.__check_equiv("sum_b")
+        secret_keys: tuple[Sk, ...] = tuple(keys["sk"])
+
+        return keys["pk"], secret_keys
 
     def DKGen(self):
         """
@@ -147,7 +153,41 @@ class BGV:
         self.__share_commits()
         return self.__finalize()
 
+    def enc(self, m):
+        r, e_prime, e_bis = [
+            self.polynomial.gaussian_element(self.comm_scheme.sigma)
+            for _ in range(3)
+        ]
+        u = self.a * r + self.p * e_prime
+        v = self.b * r + self.p * e_bis + m
+        return u, v
+
+    def t_dec(self, sk: tuple[Sk, ...], u):
+        lagrange: list[int] = self.secret_share.lagrange([i.x for i in sk])
+        mi = [coeff * com.commit.m * u for coeff, com in zip(lagrange, sk)]
+
+        E = [
+            self.polynomial.gaussian_element(self.comm_scheme.kappa)
+            for _ in range(len(lagrange))
+        ]
+        d = [m + self.p * e for m, e in zip(mi, E)]
+
+        return d
+
+    def comb(self, v, d):
+        d_sum = sum(d)
+        return self.cypari.liftall(v - d_sum) * self.cypari.Mod(1, self.p)
+
 
 if __name__ == "__main__":
     bgv = BGV()
-    a, b, sk_list = bgv.DKGen()
+    public_keys, secret_keys = bgv.DKGen()
+    results = dict()
+    for _ in range(100):
+        m = bgv.polynomial.uniform_element(bgv.p)
+        u, v = bgv.enc(m)
+        d = bgv.t_dec(secret_keys, u)
+        decrypted = bgv.comb(v, d)
+        res = decrypted == m
+        results[res] = results.get(res, 0) + 1
+    print(results)

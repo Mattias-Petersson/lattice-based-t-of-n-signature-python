@@ -138,6 +138,7 @@ class Participant:
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
+
         self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
         self.sk = Commit(new_com, new_r)
-        return NameData(self.name, self.sk)
+        return self.c_s_k, self.sk
