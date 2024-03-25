@@ -15,9 +15,7 @@ class Participant:
             + str(np.random.randint(1000))
         )
         self.hash = lambda x: self.polynomial.hash(self.comm_scheme.kappa, x)
-        self.gaussian = lambda n: self.polynomial.gaussian_array(
-            n=n, sigma=self.comm_scheme.sigma
-        )
+        self.gaussian = lambda n: self.polynomial.gaussian_array(n=n, sigma=1)
 
         self.p = p
         self.comm_scheme = comm_scheme
@@ -135,7 +133,6 @@ class Participant:
         self.sum_b = self.b + sum([i.data for i in self.others["b"]])
         new_com = 0
         new_r = 0
-        print(self.others["coms_s_bar"])
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
