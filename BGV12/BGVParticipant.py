@@ -157,7 +157,7 @@ class BGVParticipant:
     def step6(self, aj, haj):
         a = 0
         for j in range(len(aj)):
-            if hash(aj[j]) != haj:
+            if hash(aj[j]) != haj[j]:
                 raise ValueError(j)
             a += aj[j]
         self.ats = [a, 1]
@@ -165,7 +165,7 @@ class BGVParticipant:
         si2 = self.PH.gaussian_array(1, 1)
         self.si = [si1, si2]
         self.yi = [self.ats[0] * si1, si2]
-        return hash(self.y)
+        return hash(self.yi[0]) + hash(self.yi[1])
 
     def step7(self, hyj):
         self.hyj = hyj
@@ -175,15 +175,46 @@ class BGVParticipant:
 
     def step8(self, yj, ctx_sj):
         self.y = [0, 0]
-        ctx_s = [0, 0]
+        self.ctx_s = [0, 0]
         for j in range(len(yj)):
-            if hash(yj[j]) != self.hyj[j]:
+            if hash(yj[j][0]) + hash(yj[j][1]) != self.hyj[j]:
                 raise ValueError(j)
             # TODO: verify proof_sj
             self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
-            ctx_s = [ctx_s[0] + ctx_sj[j][0], ctx_s[1] + ctx_sj[j][1]]
+            self.ctx_s = [
+                self.__add_ctx(self.ctx_s[0], ctx_sj[j][0]),
+                self.__add_ctx(self.ctx_s[1], ctx_sj[j][1]),
+            ]
         self.pkts = (self.ats, self.y)
         return self.pkts
+
+    def signStep1(self):
+        ri1 = self.PH.gaussian_array(1, 1)
+        ri2 = self.PH.gaussian_array(1, 1)
+        wi = [self.ats[0] * ri1, self.ats[1] * ri2]
+        ctxri = [self.enc(ri1), self.enc(ri2)]
+        return (wi, ctxri)
+
+    def signStep2(self, wj, ctxrj, m, U):
+        w = [0, 0]
+        ctx_r = [0, 0]
+        for i in range(len(wj)):
+            w = [w[0] + wj[i][0], w[1] + wj[i][1]]
+            ctx_r = [
+                self.__add_ctx(ctx_r[0], ctxrj[i][0]),
+                self.__add_ctx(ctx_r[1], ctxrj[i][1]),
+            ]
+        self.c = self.RP.ZK.d_sigma(w, *self.pkts, m)
+        self.ctx_z = [
+            self.__add_ctx(self.ctx_s[0], ctx_r[0]),
+            self.__add_ctx(self.ctx_s[1], ctx_r[1]),
+        ]
+        ds_i = [self.t_dec(*self.ctx_z[0], U), self.t_dec(*self.ctx_z[1], U)]
+        return ds_i
+
+    def signStep3(self, ds_j):
+        z = self.comb(self.ctx_z[1], ds_j)  # TODO: CURRENT ERRORS ARE HERE
+        return (self.c, z)
 
     def enc(self, m):
         eprime = self.PH.gaussian_array(1, 1)
@@ -277,3 +308,33 @@ class BGVParticipant:
         ) * self.cypari.Mod(1, self.p)
         ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
         return ptx
+
+    def __add_ctx(self, ctx1, ctx2):
+        if ctx1 == 0:
+            return ctx2
+        if ctx2 == 0:
+            return ctx1
+        return (
+            ctx1[0] + ctx2[0],
+            ctx1[1] + ctx2[1],
+            self.__add_encProof(ctx1[2], ctx2[2]),
+            ctx1[3] + ctx2[3],
+            ctx1[4] + ctx2[4],
+            ctx1[5] + ctx2[5],
+            ctx1[6] + ctx2[6],
+        )
+
+    def __add_encProof(self, arr1, arr2):
+        res = []
+        for i in range(len(arr1)):
+            if i < 2:
+                res.append(self.__add_elementwise(arr1[i], arr2[i]))
+            else:
+                res.append(arr1[i] + arr2[i])
+        return res
+
+    def __add_elementwise(self, arr1, arr2):
+        res = []
+        for i in range(len(arr1)):
+            res.append(arr1[i] + arr2[i])
+        return res

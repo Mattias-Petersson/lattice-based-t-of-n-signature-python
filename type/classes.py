@@ -36,6 +36,9 @@ class ProofOfOpen:
     def __init__(self, z, t):
         self.z, self.t = z, t
 
+    def __add__(self, val):
+        return ProofOfOpen(self.z + val.z, self.t + val.t)
+
 
 class ProofOfSpecificOpen:
     def __init__(self, z, t1, t2):

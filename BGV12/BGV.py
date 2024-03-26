@@ -107,6 +107,51 @@ class BGV:
             )
         return step4[0]
 
+    def TDKGen(self):
+        haj = []
+        aj = []
+        for p in self.participants:
+            temp = p.step5()
+            haj.append(temp[0])
+            aj.append(temp[1])
+        hyj = []
+        for p in self.participants:
+            hyj.append(p.step6(aj, haj))
+        yj = []
+        ctxj = []
+        for p in self.participants:
+            temp = p.step7(hyj)
+            yj.append(temp[0])
+            ctxj.append(temp[1])
+        for p in self.participants:
+            p.step8(yj, ctxj)
+
+    def testTDkeys(self):
+        works = True
+        for i in range(len(self.participants)):
+            for j in range(len(self.participants)):
+                if self.participants[i].pkts[0] != self.participants[j].pkts[0]:
+                    works = False
+                if self.participants[i].pkts[1] != self.participants[j].pkts[1]:
+                    works = False
+        print(works)
+
+    def sign(self, m, U):
+        wj = []
+        ctx_r = []
+        for i in U:
+            temp = self.participants[i].signStep1()
+            wj.append(temp[0])
+            ctx_r.append(temp[1])
+        ds_j = []
+        for i in U:
+            ds_j.append(
+                self.participants[i].signStep2(wj, ctx_r, m, [1, 1] + U)
+            )
+        res = []
+        for i in U:
+            res.append(self.participants[i].signStep3(ds_j))
+
     def run(self):
         self.keyGen()
         PH = Polynomial(1024, self.p)
@@ -119,6 +164,9 @@ class BGV:
             )
         print(len(t_decs))
         ptx = PH.in_rq(self.participants[0].comb(enc[1], t_decs))
+        self.TDKGen()
+        self.testTDkeys()
+        self.sign(m, [0, 1])
         return bool(m == ptx)
 
 

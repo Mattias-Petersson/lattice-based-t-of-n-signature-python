@@ -44,7 +44,7 @@ class BDLOP:
             self.comm_scheme.k, self.comm_scheme.sigma
         )
 
-    def __d_sigma(self, *args):
+    def d_sigma(self, *args):
         return self.polynomial.hash(self.comm_scheme.kappa, *args)
 
     def __make_lhs(self, A, vector) -> cypari2.gen.Gen:
@@ -62,14 +62,14 @@ class BDLOP:
     def proof_of_opening(self, r) -> ProofOfOpen:
         y = self.__make_y()
         t = self.__make_lhs(self.comm_scheme.A1, y)
-        d = self.__d_sigma(t)
+        d = self.d_sigma(t)
         z = self.cypari.Vec(self.__make_rhs(y, d, r))
         return ProofOfOpen(z, t)
 
     def proof_of_specific_opening(self, r) -> ProofOfSpecificOpen:
         y = self.__make_y()
         t = tuple(self.__make_lhs(A, y) for A in self.__A1_A2())
-        d = self.__d_sigma(*t)
+        d = self.d_sigma(*t)
         z = self.cypari.Vec(self.__make_rhs(y, d, r))
         return ProofOfSpecificOpen(z, *t)
 
@@ -77,7 +77,7 @@ class BDLOP:
         if not self.__verify_z_bound(proof.z):
             return False
         lhs = self.__make_lhs(self.comm_scheme.A1, proof.z)
-        d = self.__d_sigma(proof.t)
+        d = self.d_sigma(proof.t)
         rhs = self.__make_rhs(proof.t, d, c1)
         return self.__check_equivalences(lhs, rhs)
 
@@ -90,7 +90,7 @@ class BDLOP:
         cprime = commit_with_r(self.comm_scheme, m, r0)
         c1 = c1 - cprime[0][0]
         c2 = c2 - cprime[0][1]
-        d = self.__d_sigma(proof.t1, proof.t2)
+        d = self.d_sigma(proof.t1, proof.t2)
 
         lhs = tuple(self.__make_lhs(A, proof.z) for A in self.__A1_A2())
         rhs = tuple(
@@ -102,7 +102,7 @@ class BDLOP:
     def verify_proof_of_zero_opening(
         self, c1, c2, proof: ProofOfSpecificOpen
     ) -> bool:
-        d = self.__d_sigma(proof.t1, proof.t2)
+        d = self.d_sigma(proof.t1, proof.t2)
         if not self.__verify_z_bound(proof.z):
             return False
 
@@ -122,14 +122,14 @@ class BDLOP:
             - g1 * self.cypari.mattranspose(y[1])
         )
         t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
-        d = self.__d_sigma(*t, g1, g2)
+        d = self.d_sigma(*t, g1, g2)
         z = self.cypari.Vec(y + d * r for y, r in zip(y, (r1, r2)))
         return ProofOfOpen(z[0], t[0]), ProofOfOpen(z[1], t[1]), u
 
     def verify_proof_of_linear_relation(
         self, proof: tuple[ProofOfOpenLinear, ProofOfOpenLinear], u
     ) -> bool:
-        d = self.__d_sigma(proof[0].t, proof[1].t, proof[0].g, proof[1].g)
+        d = self.d_sigma(proof[0].t, proof[1].t, proof[0].g, proof[1].g)
         if not self.__initial_check(*proof, d=d):
             return False
         lhs = self.comm_scheme.A2 * (
@@ -150,7 +150,7 @@ class BDLOP:
         y = tuple(self.__make_y() for _ in range(3))
         r = r1, r2, r3
         t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
-        d = self.__d_sigma(*t)
+        d = self.d_sigma(*t)
         z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
         proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen](
             ProofOfOpen(z, t) for z, t in zip(z, t)
@@ -168,7 +168,7 @@ class BDLOP:
         u: cypari2.gen.Gen,
     ) -> bool:
         t = (proof.t for proof in proof)
-        d = self.__d_sigma(*t)
+        d = self.d_sigma(*t)
         if not self.__initial_check(*proof, d=d):
             return False
         lhs = self.comm_scheme.A2 * (
@@ -190,7 +190,7 @@ class BDLOP:
         y = tuple(self.__make_y() for _ in range(4))
         r = r1, r2, r3, r4
         t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
-        d = self.__d_sigma(*t)
+        d = self.d_sigma(*t)
         z = tuple(self.cypari.Vec(y + d * r) for y, r in zip(y, r))
         proof = tuple[ProofOfOpen, ProofOfOpen, ProofOfOpen, ProofOfOpen](
             ProofOfOpen(z, t) for z, t in zip(z, t)
@@ -214,7 +214,7 @@ class BDLOP:
         u: cypari2.gen.Gen,
     ) -> bool:
         t = (proof.t for proof in proof)
-        d = self.__d_sigma(*t)
+        d = self.d_sigma(*t)
         if not self.__initial_check(*proof, d=d):
             return False
         lhs = self.comm_scheme.A2 * (
