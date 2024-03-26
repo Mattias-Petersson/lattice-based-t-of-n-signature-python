@@ -15,7 +15,7 @@ class Participant:
             + str(np.random.randint(1000))
         )
         self.hash = lambda x: self.polynomial.hash(self.comm_scheme.kappa, x)
-        self.gaussian = lambda n: self.polynomial.gaussian_array(n=n, sigma=1)
+        self.gaussian = lambda n: self.polynomial.gaussian_array(n=n, sigma=4)
 
         self.p = p
         self.comm_scheme = comm_scheme
