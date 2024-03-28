@@ -1,3 +1,4 @@
+import itertools
 import pytest
 import numpy as np
 
@@ -69,3 +70,36 @@ def test_additively_homomorphic(secret_share, p1_r, poly):
     added = [SecretSharePoly(x=i.x, p=i.p + j.p) for i, j in zip(p1_r, p2_r)]
     reconstructed = secret_share.reconstruct_poly(added)
     assert reconstructed == p1 + p2
+
+
+def test_invalid_tn(comm_scheme):
+    """
+    Trying to send in more required participants than the total should throw
+    an error.
+    """
+    with pytest.raises(ValueError):
+        SecretShare((5, 4), comm_scheme.q)
+
+
+def test_not_honest_participant(secret_share, p1_r, poly):
+    """
+    If one of the participants is not honest and does not have a share of the
+    original polynomial, the resulting polynomial should fail.
+    """
+    p1, r = p1_r
+    new_secret = SecretSharePoly(r[0].x, poly.uniform_element())
+    p2 = secret_share.reconstruct_poly([new_secret, r[1]])
+    assert not p1 == p2
+    print()
+
+
+def test_all_combinations(secret_share, p1_r):
+    """
+    All combinations of t should work when reconstructing the polynomial, as
+    long as they are honest.
+    """
+    p1, r = p1_r
+    combs = list(itertools.combinations(r, secret_share.t))
+    for c in combs:
+        p2 = secret_share.reconstruct_poly(c)
+        assert p2 == p1

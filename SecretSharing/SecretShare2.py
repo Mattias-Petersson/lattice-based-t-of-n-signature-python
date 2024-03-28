@@ -1,7 +1,6 @@
 from BDLOP16.CommitmentScheme import CommitmentScheme
-from type.classes import TN, SecretSharePoly
+from type.classes import TN, SecretSharePoly, poly
 from utils.Polynomial import Polynomial
-import cypari2
 import numpy as np
 import math
 
@@ -18,11 +17,13 @@ class SecretShare:
 
     def __init__(self, tn: TN, q: int):
         self.t, self.n = tn
+        if self.t > self.n:
+            raise ValueError("Got t larger than n in secret share.")
         self.q = q
         self.polynomial = Polynomial(self.t, self.q)
-        self.cypari: cypari2.pari_instance.Pari = self.polynomial.cypari
+        self.cypari = self.polynomial.cypari
 
-    def __generatePoly(self, s):
+    def __generatePoly(self, s: poly) -> poly:
         """
         Samples t - 1 uniform elements and creates a polynomial out of these, with
         the secret s as the x^0 coefficient such that p(0) = s. We are also limiting
@@ -58,6 +59,12 @@ class SecretShare:
         return [SecretSharePoly(idx + 1, p) for idx, p in enumerate(temp)]
 
     def reconstruct_poly(self, r: list[SecretSharePoly]):
+        """
+        Reconstructs a polynomial using a list of secret shares.
+        If the list is too large, we simply take the first t elements rather
+        than report an error. If the list is too small the returned polynomial
+        will not be equivalent to the one that was shared.
+        """
         if len(r) > self.t:
             r = r[: self.t]
         contributors = [i.x for i in r]
@@ -65,19 +72,3 @@ class SecretShare:
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.__reconstruct(i, contributors) for i in polys]
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
-
-
-if __name__ == "__main__":
-    print()
-    c = CommitmentScheme()
-    s = SecretShare((3, 4), c.q)
-    p1 = s.polynomial.uniform_element()
-    r = s.share_poly(p1)
-    print(p1)
-    print(len(p1))
-    print(r)
-    indices = np.random.choice(range(len(r)), size=s.t, replace=False)
-    r2 = [r[i] for i in indices]
-    print(indices)
-    print(p1)
-    print(s.reconstruct_poly(r2))
