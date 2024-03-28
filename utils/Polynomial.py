@@ -1,9 +1,10 @@
 import cypari2
-import numpy as np
 from numpy.random import Generator, PCG64
 import math
 from cypari2.convert import gen_to_python
 import hashlib
+
+from type.classes import poly
 
 
 class Polynomial:
@@ -25,24 +26,31 @@ class Polynomial:
         if not self.cypari.isprime(q):
             raise ValueError("q needs to be prime.")
 
+        self.gen = Generator(PCG64())
         self.N = N
         self.q = q
 
-    def uniform_element(self, bound: int = 0) -> cypari2.gen.Gen:
+    def uniform_element(self, bound: int = 0) -> poly:
+        """
+        Returns a uniformly distributed polynomial.
+        """
+
         if bound == 0:
             bound = (self.q - 1) // 2
-        randomized_coeffs = np.random.randint(bound, size=self.N)
+
+        randomized_coeffs = self.gen.integers(bound, size=self.N)
         return self.in_rq(self.cypari.Pol(randomized_coeffs))
 
-    def gaussian_element(self, sigma: int) -> cypari2.gen.Gen:
+    def gaussian_element(self, sigma: int) -> poly:
         """
-        TODO: Verify that this is behaving similar to a Gaussian distribution.
+        Returns an element from a rounded continuous Gaussian distribution.
+        This distribution is used instead of a discrete Gaussian distribution.
         """
-        unrounded = np.random.normal(0, sigma, size=self.N)
+        unrounded = self.gen.normal(0, sigma, size=self.N)
         poly = self.cypari.round(self.cypari.Pol(unrounded))
         return self.in_rq(poly)
 
-    def in_rq(self, p: cypari2.gen.Gen):
+    def in_rq(self, p: poly):
         """
         Returns a polynomial congruent in R_q to the one sent in.
 
@@ -58,7 +66,7 @@ class Polynomial:
             * self.cypari.Mod(1, self.basis_poly())
         )
 
-    def basis_poly(self) -> cypari2.gen.Gen:
+    def basis_poly(self) -> poly:
         fx = f"x^{self.N} + 1"
         return self.cypari.Pol(fx)
 
@@ -82,19 +90,19 @@ class Polynomial:
 
     def uniform_array(
         self, n: int | tuple[int, int], bound: int = 0
-    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
+    ) -> poly | list[poly]:
         func = self.__shape_helper(n, self.uniform_element)
         return func(n, bound)
 
     def gaussian_array(
         self, n: int | tuple[int, int], sigma: int
-    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
+    ) -> poly | list[poly]:
         func = self.__shape_helper(n, self.gaussian_element)
         return func(n, sigma)
 
     def guassian_bounded_array(
         self, n: int | tuple[int, int], sigma: int, bound: int
-    ) -> cypari2.gen.Gen | list[cypari2.gen.Gen]:
+    ) -> poly | list[poly]:
         def bounded_element(sigma):
             r = self.gaussian_element(sigma)
             while self.l2_norm(r) > bound:
@@ -104,10 +112,10 @@ class Polynomial:
         func = self.__shape_helper(n, bounded_element)
         return func(n, sigma)
 
-    def ones(self, n: int) -> list[cypari2.gen.Gen]:
+    def ones(self, n: int) -> list[poly]:
         return self.in_rq(self.cypari.matid(n))
 
-    def l2_norm(self, poly: cypari2.gen.Gen) -> float:
+    def l2_norm(self, poly: poly) -> float:
         """
         Takes the l2 norm of a polynomial by first converting it to
         an integer array.
@@ -115,13 +123,14 @@ class Polynomial:
         lst = self.pol_to_arr(poly)
         return math.sqrt(sum([i**2 % self.q for i in lst]))
 
-    def pol_to_arr(self, pol) -> list[int]:
+    def pol_to_arr(self, pol: poly) -> list[int]:
+        """
+        Convert a polynomial to an array of integers.
+        """
         pariVec = self.cypari.Vec(self.cypari.liftall(pol))
         return gen_to_python(pariVec)
 
-    def challenge(
-        self, kappa: int, seed: list[int] | None = None
-    ) -> cypari2.gen.Gen:
+    def challenge(self, kappa: int, seed: list[int] | None = None) -> poly:
         """
         Provides a polynomial in the ring R_q with an l_inf norm of one.
         Additionally, it has a l_1 norm of kappa and should be small in
@@ -138,7 +147,7 @@ class Polynomial:
             pol += i + f"x^{j}"
         return self.cypari.Pol(pol)
 
-    def small_invertible(self, kappa: int) -> cypari2.gen.Gen:
+    def small_invertible(self, kappa: int) -> poly:
         """
         The difference of two challenges c will have an l_inf norm of at
         most two. As such, all elements here will be invertible in R_q.
