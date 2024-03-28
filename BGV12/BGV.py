@@ -146,28 +146,49 @@ class BGV:
         ds_j = []
         for i in U:
             ds_j.append(
-                self.participants[i].signStep2(wj, ctx_r, m, [1, 1] + U)
+                self.participants[i].signStep2(
+                    wj, ctx_r, m, [U[0] + 1, U[1] + 1]
+                )
             )
         res = []
         for i in U:
             res.append(self.participants[i].signStep3(ds_j))
+        print(res[0][0] == res[1][0])
+        print(res[0][1][0] == res[1][1][0])
+        print(res[0][1][1] == res[1][1][1])
+        return res[0]
 
     def run(self):
         self.keyGen()
         PH = Polynomial(1024, self.p)
-        m = PH.in_rq(PH.uniform_array(1))
+        m = PH.in_rq(PH.in_rq("1"))
+        m2 = PH.in_rq(PH.in_rq("1"))
+        print(m)
         enc = self.participants[0].enc(m)
+        enc2 = self.participants[0].enc(m2)
+        add_enc = self.participants[0].add_ctx(enc, enc2)
+        mul_enc = self.participants[0].mult_ctx(
+            self.comm_scheme.cypari.Pol("x^2+2"), enc2
+        )
         t_decs = []
         for i in range(0, self.t):
             t_decs.append(
-                self.participants[i].t_dec(*enc, range(1, self.t + 1))
+                self.participants[i].t_dec(*add_enc, range(1, self.t + 1))
             )
-        print(len(t_decs))
-        ptx = PH.in_rq(self.participants[0].comb(enc[1], t_decs))
+        ptx = PH.in_rq(self.participants[0].comb(add_enc[1], t_decs))
+        t_decs2 = []
+        for i in range(0, self.t):
+            t_decs2.append(
+                self.participants[i].t_dec(*mul_enc, range(1, self.t + 1))
+            )
+        ptx2 = PH.in_rq(self.participants[0].comb(mul_enc[1], t_decs2))
         self.TDKGen()
         self.testTDkeys()
-        self.sign(m, [0, 1])
-        return bool(m == ptx)
+        sign = self.sign(m, [0, 1])
+        print(self.participants[0].verify(sign[0], sign[1], m))
+        print(ptx)
+        print(ptx2)
+        return bool(m + m2 == ptx)
 
 
 c = CommitmentScheme()

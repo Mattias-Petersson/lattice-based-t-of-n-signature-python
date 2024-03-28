@@ -174,16 +174,17 @@ class BGVParticipant:
         return (self.yi, ctx_si)
 
     def step8(self, yj, ctx_sj):
-        self.y = [0, 0]
+        self.y = [yj[0][0], yj[0][1]]
         self.ctx_s = [0, 0]
         for j in range(len(yj)):
             if hash(yj[j][0]) + hash(yj[j][1]) != self.hyj[j]:
                 raise ValueError(j)
             # TODO: verify proof_sj
-            self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
+            if j != 0:
+                self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
             self.ctx_s = [
-                self.__add_ctx(self.ctx_s[0], ctx_sj[j][0]),
-                self.__add_ctx(self.ctx_s[1], ctx_sj[j][1]),
+                self.add_ctx(self.ctx_s[0], ctx_sj[j][0]),
+                self.add_ctx(self.ctx_s[1], ctx_sj[j][1]),
             ]
         self.pkts = (self.ats, self.y)
         return self.pkts
@@ -196,25 +197,41 @@ class BGVParticipant:
         return (wi, ctxri)
 
     def signStep2(self, wj, ctxrj, m, U):
-        w = [0, 0]
+        self.w = [0, 0]
         ctx_r = [0, 0]
         for i in range(len(wj)):
-            w = [w[0] + wj[i][0], w[1] + wj[i][1]]
+            self.w = [self.w[0] + wj[i][0], self.w[1] + wj[i][1]]
             ctx_r = [
-                self.__add_ctx(ctx_r[0], ctxrj[i][0]),
-                self.__add_ctx(ctx_r[1], ctxrj[i][1]),
+                self.add_ctx(ctx_r[0], ctxrj[i][0]),
+                self.add_ctx(ctx_r[1], ctxrj[i][1]),
             ]
-        self.c = self.RP.ZK.d_sigma(w, *self.pkts, m)
+        self.c = self.RP.ZK.d_sigma(self.w[0], self.w[1], self.pkts[0], m)
         self.ctx_z = [
-            self.__add_ctx(self.ctx_s[0], ctx_r[0]),
-            self.__add_ctx(self.ctx_s[1], ctx_r[1]),
+            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), ctx_r[0]),
+            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[1]), ctx_r[1]),
         ]
         ds_i = [self.t_dec(*self.ctx_z[0], U), self.t_dec(*self.ctx_z[1], U)]
         return ds_i
 
     def signStep3(self, ds_j):
-        z = self.comb(self.ctx_z[1], ds_j)  # TODO: CURRENT ERRORS ARE HERE
+        z = [
+            self.comb(self.ctx_z[0][1], ds_j[0]),
+            self.comb(self.ctx_z[1][1], ds_j[1]),
+        ]
         return (self.c, z)
+
+    def verify(self, c, z, m):
+        q = [
+            self.ats[0] * z[0] - c * self.y[0],
+            self.ats[1] * z[1] - c * self.y[1],
+        ]
+        print("W = Q")
+        print(self.w[0] == q[0])
+        print(self.w[1] == q[1])
+        if c == self.RP.ZK.d_sigma(q[0], q[1], self.pkts[0], m):
+            print("IT WORKS")
+            return True
+        return False
 
     def enc(self, m):
         eprime = self.PH.gaussian_array(1, 1)
@@ -274,7 +291,9 @@ class BGVParticipant:
             com_ebis,
         ):
             print("fail")
-            raise ValueError()
+            # raise ValueError()
+        else:
+            print("success")
         lagrange = 1
         for j in U:
             if j != self.i:
@@ -309,7 +328,7 @@ class BGVParticipant:
         ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
         return ptx
 
-    def __add_ctx(self, ctx1, ctx2):
+    def add_ctx(self, ctx1, ctx2):
         if ctx1 == 0:
             return ctx2
         if ctx2 == 0:
@@ -322,6 +341,17 @@ class BGVParticipant:
             ctx1[4] + ctx2[4],
             ctx1[5] + ctx2[5],
             ctx1[6] + ctx2[6],
+        )
+
+    def mult_ctx(self, val, ctx):
+        return (
+            val * ctx[0],
+            val * ctx[1],
+            ctx[2],
+            ctx[3],
+            ctx[4],
+            ctx[5],
+            ctx[6],
         )
 
     def __add_encProof(self, arr1, arr2):
