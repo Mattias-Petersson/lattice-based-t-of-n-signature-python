@@ -2,7 +2,7 @@ import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.Participant import Participant
-from type.classes import NameData, Sk
+from type.classes import NameData, Sk, poly
 from utils.Polynomial import Polynomial
 
 
@@ -122,13 +122,13 @@ class BGV:
         for i in self.participants:
             i.reconstruct(recreated[i.name], self.t)
 
-    def __check_equiv(self, attr):
+    def __check_equiv(self, attr) -> poly:
         all_attr = [getattr(i, attr) for i in self.participants]
         if len(set(all_attr)) != 1:
             raise ValueError(f"Users did not get matching values for {attr}")
         return all_attr.pop()
 
-    def __finalize(self):
+    def __finalize(self) -> tuple[list, list[Sk]]:
         keys = dict()
         for idx, part in enumerate(self.participants):
             pk, sk = part.generate_final()
@@ -137,8 +137,7 @@ class BGV:
 
         self.a = self.__check_equiv("sum_a")
         self.b = self.__check_equiv("sum_b")
-        secret_keys: tuple[Sk, ...] = tuple(keys["sk"])
-        return keys["pk"], secret_keys
+        return keys["pk"], keys["sk"]
 
     def DKGen(self):
         """
@@ -155,7 +154,7 @@ class BGV:
         self.__share_commits()
         return self.__finalize()
 
-    def enc(self, m):
+    def enc(self, m: poly) -> tuple[poly, poly]:
         r, e_prime, e_bis = [
             self.polynomial.gaussian_element(1) for _ in range(3)
         ]
@@ -167,22 +166,22 @@ class BGV:
     def dec(self, sk, u):
         return NotImplementedError("Not implemented for this version.")
 
-    def t_dec(self, sk: tuple[Sk, ...], u):
+    def t_dec(self, sk: list[Sk], u):
         lagrange = self.secret_share.lagrange([i.x for i in sk])
         M = [coeff * com.commit.m * u for coeff, com in zip(lagrange, sk)]
         E = [self.polynomial.uniform_element(2) for _ in sk]
         d = [m + self.p * e for m, e in zip(M, E)]
         return d
 
-    def comb(self, v, d):
-        ptx = self.cypari.liftall(
-            v
-            - sum(d)
-            + self.cypari.Pol(
-                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
-            )
-        ) * self.cypari.Mod(1, self.p)
-        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
+    def comb(self, v: poly, d: list):
+        round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
+        q_half = (self.q - 1) / 2
+        q_half_p = q_half % self.p
+        helper_array = round_and_pol(np.ones(self.N) * q_half)
+        ptx = self.cypari.liftall(v - sum(d) + helper_array) * self.cypari.Mod(
+            1, self.p
+        )
+        ptx -= round_and_pol(np.ones(self.N) * (q_half_p))
         return ptx
 
     def get_message(self):
@@ -196,7 +195,7 @@ if __name__ == "__main__":
     for _ in range(100):
         m = bgv.get_message()
         u, v = bgv.enc(m)
-        d = bgv.t_dec(secret_keys[:2], u)
+        d = bgv.t_dec([secret_keys[3], secret_keys[0]], u)
         decrypted = bgv.comb(v, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1

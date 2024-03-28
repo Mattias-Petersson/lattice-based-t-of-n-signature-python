@@ -1,6 +1,8 @@
 from collections import namedtuple
+import cypari2
 
 type TN = tuple[int, int]
+type poly = cypari2.gen.Gen
 
 
 class Commit:
