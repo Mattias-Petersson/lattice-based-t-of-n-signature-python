@@ -66,7 +66,6 @@ def test_additively_homomorphic(secret_share, p1_r, poly):
     p1, p1_r = p1_r
     p2 = poly.uniform_element()
     p2_r = secret_share.share_poly(p2)
-    print(p1_r)
     added = [SecretSharePoly(x=i.x, p=i.p + j.p) for i, j in zip(p1_r, p2_r)]
     reconstructed = secret_share.reconstruct_poly(added)
     assert reconstructed == p1 + p2
@@ -90,7 +89,6 @@ def test_not_honest_participant(secret_share, p1_r, poly):
     new_secret = SecretSharePoly(r[0].x, poly.uniform_element())
     p2 = secret_share.reconstruct_poly([new_secret, r[1]])
     assert not p1 == p2
-    print()
 
 
 def test_all_combinations(secret_share, p1_r):

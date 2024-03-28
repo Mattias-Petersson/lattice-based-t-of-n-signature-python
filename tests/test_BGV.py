@@ -54,7 +54,7 @@ def test_valid_comb(bgv, make_Dkgen):
     _, sec = make_Dkgen
     m = bgv.get_message()
     u, v = bgv.enc(m)
-    d = bgv.t_dec(sec, u)
+    d = bgv.t_dec([sec[0], sec[1], sec[2]], u)
     decrypted = bgv.comb(v, d)
     assert decrypted == m
 
