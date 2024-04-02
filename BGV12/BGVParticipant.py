@@ -150,7 +150,7 @@ class BGVParticipant:
         return self.pk
 
     def step5(self):
-        ai = self.PH.uniform_array(1)
+        ai = self.PH.uniform_array(1, 2)
         hai = hash(ai)
         return (hai, ai)
 
@@ -169,7 +169,10 @@ class BGVParticipant:
 
     def step7(self, hyj):
         self.hyj = hyj
-        ctx_si = [self.enc(self.si[0]), self.enc(self.si[1])]
+        ctx_si = [
+            self.enc(self.__Rq_to_Rp(self.si[0])),
+            self.enc(self.__Rq_to_Rp(self.si[1])),
+        ]
         # TODO: proof_si
         return (self.yi, ctx_si)
 
@@ -193,24 +196,33 @@ class BGVParticipant:
         ri1 = self.PH.gaussian_array(1, 1)
         ri2 = self.PH.gaussian_array(1, 1)
         wi = [self.ats[0] * ri1, self.ats[1] * ri2]
-        ctxri = [self.enc(ri1), self.enc(ri2)]
+        ctxri = [
+            self.enc(self.__Rq_to_Rp(ri1)),
+            self.enc(self.__Rq_to_Rp(ri2)),
+        ]
         return (wi, ctxri)
 
     def signStep2(self, wj, ctxrj, m, U):
+        self.PHp = Polynomial(1024, self.p)
         self.w = [0, 0]
-        ctx_r = [0, 0]
+        self.ctx_r = [0, 0]
         for i in range(len(wj)):
             self.w = [self.w[0] + wj[i][0], self.w[1] + wj[i][1]]
-            ctx_r = [
-                self.add_ctx(ctx_r[0], ctxrj[i][0]),
-                self.add_ctx(ctx_r[1], ctxrj[i][1]),
+            self.ctx_r = [
+                self.add_ctx(self.ctx_r[0], ctxrj[i][0]),
+                self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
             ]
-        self.c = self.RP.ZK.d_sigma(self.w[0], self.w[1], self.pkts[0], m)
+        self.c = self.PHp.in_rq(self.RP.ZK.d_sigma(self.w[0], self.pkts[0], m))
+        print("C")
+        print(self.c)
         self.ctx_z = [
-            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), ctx_r[0]),
-            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[1]), ctx_r[1]),
+            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), self.ctx_r[0]),
+            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[1]), self.ctx_r[1]),
         ]
-        ds_i = [self.t_dec(*self.ctx_z[0], U), self.t_dec(*self.ctx_z[1], U)]
+        ds_i = [
+            self.t_dec(*self.ctx_z[0], U),
+            self.t_dec(*self.ctx_z[1], U),
+        ]  # THIS COULD BE THE SOURCE???
         return ds_i
 
     def signStep3(self, ds_j):
@@ -218,6 +230,7 @@ class BGVParticipant:
             self.comb(self.ctx_z[0][1], ds_j[0]),
             self.comb(self.ctx_z[1][1], ds_j[1]),
         ]
+        print(z[0])  # Why is this so big?
         return (self.c, z)
 
     def verify(self, c, z, m):
@@ -225,10 +238,18 @@ class BGVParticipant:
             self.ats[0] * z[0] - c * self.y[0],
             self.ats[1] * z[1] - c * self.y[1],
         ]
-        print("W = Q")
-        print(self.w[0] == q[0])
-        print(self.w[1] == q[1])
-        if c == self.RP.ZK.d_sigma(q[0], q[1], self.pkts[0], m):
+        # print("W = Q")
+        # print(self.w[0] == q[0])
+        # print("W")
+        # print(self.w[0])
+        # print("Q")
+        # print(q[0])
+        # print(self.w[1] == q[1])
+        # print("W")
+        # print(self.w[1])
+        # print("Q")
+        # print(q[1])
+        if c == self.PHp.in_rq(self.RP.ZK.d_sigma(q[0], self.pkts[0], m)):
             print("IT WORKS")
             return True
         return False
@@ -328,6 +349,16 @@ class BGVParticipant:
         ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
         return ptx
 
+    def comb_in_q(self, v, t_decs):
+        for i in t_decs:
+            if not self.RP.verify_ds(*(i[0]), self.p, i[1], i[2], i[3]):
+                raise ValueError
+        sum_ds = 0
+        for i in t_decs:
+            sum_ds = sum_ds + i[3]
+        ptx = v - sum_ds
+        return ptx
+
     def add_ctx(self, ctx1, ctx2):
         if ctx1 == 0:
             return ctx2
@@ -368,3 +399,10 @@ class BGVParticipant:
         for i in range(len(arr1)):
             res.append(arr1[i] + arr2[i])
         return res
+
+    def __Rq_to_Rp(self, v):
+        return self.cypari.liftall(
+            v + self.cypari.Pol(self.cypari.round(np.ones(1024) * (1000)))
+        ) * self.cypari.Mod(1, self.p) - self.cypari.Pol(
+            self.cypari.round(np.ones(1024) * (1000))
+        )

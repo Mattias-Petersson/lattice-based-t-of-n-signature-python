@@ -1,3 +1,4 @@
+import numpy as np
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from BDLOP16.RelationProofs import RelationProver
@@ -17,6 +18,7 @@ class BGV:
         self.RP = RP
         self.t = 2
         self.p = p
+        self.q = q
         for i in range(1, n + 1):
             self.participants.append(
                 BGVParticipant(
@@ -151,8 +153,31 @@ class BGV:
                 )
             )
         res = []
+        arr = []
+        for p in self.participants:
+            arr.append(p.si[0])
+        s = sum(arr)
+        t_decs = []
         for i in U:
+            t_decs.append(
+                self.participants[i].t_dec(*(self.participants[0].ctx_s[0]), U)
+            )
             res.append(self.participants[i].signStep3(ds_j))
+        tests = self.participants[0].comb(
+            self.participants[0].ctx_s[0][1], t_decs
+        )
+        s = self.comm_scheme.cypari.liftall(
+            s
+            + self.comm_scheme.cypari.Pol(
+                self.comm_scheme.cypari.round(np.ones(1024) * (1000))
+            )
+        ) * self.comm_scheme.cypari.Mod(
+            1, self.p
+        ) - self.comm_scheme.cypari.Pol(
+            self.comm_scheme.cypari.round(np.ones(1024) * (1000))
+        )
+        print("MAJOR TEST")
+        print(s == tests)
         print(res[0][0] == res[1][0])
         print(res[0][1][0] == res[1][1][0])
         print(res[0][1][1] == res[1][1][1])
@@ -161,8 +186,9 @@ class BGV:
     def run(self):
         self.keyGen()
         PH = Polynomial(1024, self.p)
-        m = PH.in_rq(PH.in_rq("1"))
-        m2 = PH.in_rq(PH.in_rq("1"))
+        PHq = Polynomial(1024, self.q)
+        m = PHq.in_rq(PHq.in_rq("1"))
+        m2 = PHq.in_rq(PHq.in_rq("1"))
         print(m)
         enc = self.participants[0].enc(m)
         enc2 = self.participants[0].enc(m2)
