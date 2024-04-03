@@ -145,39 +145,23 @@ class BGV:
             temp = self.participants[i].signStep1()
             wj.append(temp[0])
             ctx_r.append(temp[1])
-        ds_j = []
+        ret = []
         for i in U:
-            ds_j.append(
+            ret.append(
                 self.participants[i].signStep2(
                     wj, ctx_r, m, [U[0] + 1, U[1] + 1]
                 )
             )
+        ds_j = []
+        for i in range(len(U)):
+            temp = []
+            for j in range(len(U)):
+                temp.append(ret[j][i])
+            ds_j.append(temp)
         res = []
-        arr = []
-        for p in self.participants:
-            arr.append(p.si[0])
-        s = sum(arr)
-        t_decs = []
         for i in U:
-            t_decs.append(
-                self.participants[i].t_dec(*(self.participants[0].ctx_s[0]), U)
-            )
             res.append(self.participants[i].signStep3(ds_j))
-        tests = self.participants[0].comb(
-            self.participants[0].ctx_s[0][1], t_decs
-        )
-        s = self.comm_scheme.cypari.liftall(
-            s
-            + self.comm_scheme.cypari.Pol(
-                self.comm_scheme.cypari.round(np.ones(1024) * (1000))
-            )
-        ) * self.comm_scheme.cypari.Mod(
-            1, self.p
-        ) - self.comm_scheme.cypari.Pol(
-            self.comm_scheme.cypari.round(np.ones(1024) * (1000))
-        )
         print("MAJOR TEST")
-        print(s == tests)
         print(res[0][0] == res[1][0])
         print(res[0][1][0] == res[1][1][0])
         print(res[0][1][1] == res[1][1][1])

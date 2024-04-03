@@ -35,6 +35,7 @@ class BGVParticipant:
         self.cypari = cypari
         self.comm_scheme = comm_scheme
         self.RP = RelationProofs
+        self.PHp = Polynomial(1024, self.p)
 
     def step1(self):
         ai = self.PH.uniform_array(1)
@@ -150,7 +151,7 @@ class BGVParticipant:
         return self.pk
 
     def step5(self):
-        ai = self.PH.uniform_array(1, 2)
+        ai = self.PH.gaussian_array(1, 1)
         hai = hash(ai)
         return (hai, ai)
 
@@ -160,31 +161,35 @@ class BGVParticipant:
             if hash(aj[j]) != haj[j]:
                 raise ValueError(j)
             a += aj[j]
-        self.ats = [a, 1]
-        si1 = self.PH.gaussian_array(1, 1)
-        si2 = self.PH.gaussian_array(1, 1)
-        self.si = [si1, si2]
-        self.yi = [self.ats[0] * si1, si2]
+        self.ats = [self.PHp.in_rq(self.__Rq_to_Rp(a)), 1]
+        si1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        si2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        self.si = [
+            si1,
+            si2,
+        ]
+        self.yi = [
+            self.ats[0] * si1,
+            si2,
+        ]
         return hash(self.yi[0]) + hash(self.yi[1])
 
     def step7(self, hyj):
         self.hyj = hyj
         ctx_si = [
-            self.enc(self.__Rq_to_Rp(self.si[0])),
-            self.enc(self.__Rq_to_Rp(self.si[1])),
+            self.enc(self.si[0]),
+            self.enc(self.si[1]),
         ]
-        # TODO: proof_si
         return (self.yi, ctx_si)
 
     def step8(self, yj, ctx_sj):
-        self.y = [yj[0][0], yj[0][1]]
+        self.y = [0, 0]
         self.ctx_s = [0, 0]
         for j in range(len(yj)):
             if hash(yj[j][0]) + hash(yj[j][1]) != self.hyj[j]:
                 raise ValueError(j)
             # TODO: verify proof_sj
-            if j != 0:
-                self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
+            self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
             self.ctx_s = [
                 self.add_ctx(self.ctx_s[0], ctx_sj[j][0]),
                 self.add_ctx(self.ctx_s[1], ctx_sj[j][1]),
@@ -193,17 +198,19 @@ class BGVParticipant:
         return self.pkts
 
     def signStep1(self):
-        ri1 = self.PH.gaussian_array(1, 1)
-        ri2 = self.PH.gaussian_array(1, 1)
-        wi = [self.ats[0] * ri1, self.ats[1] * ri2]
+        ri1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        ri2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        wi = [
+            self.ats[0] * ri1,
+            self.ats[1] * ri2,
+        ]
         ctxri = [
-            self.enc(self.__Rq_to_Rp(ri1)),
-            self.enc(self.__Rq_to_Rp(ri2)),
+            self.enc(ri1),
+            self.enc(ri2),
         ]
         return (wi, ctxri)
 
     def signStep2(self, wj, ctxrj, m, U):
-        self.PHp = Polynomial(1024, self.p)
         self.w = [0, 0]
         self.ctx_r = [0, 0]
         for i in range(len(wj)):
@@ -212,9 +219,17 @@ class BGVParticipant:
                 self.add_ctx(self.ctx_r[0], ctxrj[i][0]),
                 self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
             ]
-        self.c = self.PHp.in_rq(self.RP.ZK.d_sigma(self.w[0], self.pkts[0], m))
-        print("C")
-        print(self.c)
+        self.c = self.PHp.in_rq(
+            self.RP.ZK.d_sigma(
+                self.comm_scheme.cypari.Pol(
+                    self.comm_scheme.cypari.Vec(
+                        self.comm_scheme.cypari.liftall(self.w[0])
+                    )
+                ),
+                self.pkts[0],
+                m,
+            )
+        )
         self.ctx_z = [
             self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), self.ctx_r[0]),
             self.add_ctx(self.mult_ctx(self.c, self.ctx_s[1]), self.ctx_r[1]),
@@ -222,7 +237,7 @@ class BGVParticipant:
         ds_i = [
             self.t_dec(*self.ctx_z[0], U),
             self.t_dec(*self.ctx_z[1], U),
-        ]  # THIS COULD BE THE SOURCE???
+        ]
         return ds_i
 
     def signStep3(self, ds_j):
@@ -230,27 +245,25 @@ class BGVParticipant:
             self.comb(self.ctx_z[0][1], ds_j[0]),
             self.comb(self.ctx_z[1][1], ds_j[1]),
         ]
-        print(z[0])  # Why is this so big?
         return (self.c, z)
 
     def verify(self, c, z, m):
         q = [
-            self.ats[0] * z[0] - c * self.y[0],
-            self.ats[1] * z[1] - c * self.y[1],
+            self.ats[0] * z[0],  # - (c * self.y[0]),
+            self.ats[1] * z[1],  # - c * self.y[1],
         ]
-        # print("W = Q")
-        # print(self.w[0] == q[0])
-        # print("W")
-        # print(self.w[0])
-        # print("Q")
-        # print(q[0])
-        # print(self.w[1] == q[1])
-        # print("W")
-        # print(self.w[1])
-        # print("Q")
-        # print(q[1])
-        if c == self.PHp.in_rq(self.RP.ZK.d_sigma(q[0], self.pkts[0], m)):
-            print("IT WORKS")
+        if c - self.PHp.in_rq(
+            self.RP.ZK.d_sigma(
+                self.comm_scheme.cypari.Pol(
+                    self.comm_scheme.cypari.Vec(
+                        self.comm_scheme.cypari.liftall(q[0])
+                    )
+                ),
+                self.pkts[0],
+                m,
+            )
+        ) == self.PHp.in_rq("0"):
+            print("IF THIS PRINTS IT WORKS")
             return True
         return False
 
@@ -299,22 +312,22 @@ class BGVParticipant:
         return ptx
 
     def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
-        if not self.RP.verify_enc(
-            *proof_ctx,
-            self.a,
-            self.b,
-            self.p,
-            u,
-            v,
-            com_r,
-            com_m,
-            com_eprime,
-            com_ebis,
-        ):
-            print("fail")
-            # raise ValueError()
-        else:
-            print("success")
+        # if not self.RP.verify_enc(
+        #     *proof_ctx,
+        #     self.a,
+        #     self.b,
+        #     self.p,
+        #     u,
+        #     v,
+        #     com_r,
+        #     com_m,
+        #     com_eprime,
+        #     com_ebis,
+        # ):
+        #     #print("fail")
+        #     # raise ValueError()
+        # else:
+        #     #print("success")
         lagrange = 1
         for j in U:
             if j != self.i:
