@@ -76,6 +76,9 @@ class DOTT:
         r = self.__make_r(self.l + 2 * self.w, self.s, self.B)
         return Commit(m, r)
 
+    def get_r(self):
+        return self.__make_r(self.l + 2 * self.w, self.s, self.B)
+
     def com(self, c: Commit):
         """
         Commits to an x in R_q and returns Â * r + [0 x]~
@@ -103,7 +106,9 @@ class DOTT:
         True if the commitment was valid, False otherwise.
         """
         for r in com.r:
-            if self.polynomial.l2_norm(r) > self.B:
+            if (
+                self.polynomial.l2_norm(r) > self.B
+            ):  # TODO: Make this work, as pol_to_arr crashes
                 return False
         Ar, zeroes = self.__Ar_with_msg(com)
         return com.c == Ar + zeroes

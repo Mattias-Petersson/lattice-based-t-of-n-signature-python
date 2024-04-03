@@ -5,11 +5,22 @@ from BDLOP16.RelationProofs import RelationProver
 from BGV12.BGVParticipant import BGVParticipant
 from SecretSharing.SecretShare import SecretShare
 from utils.Polynomial import Polynomial
+from DOTT21.DOTT import DOTT
 
 
 class BGV:
     def __init__(
-        self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024, p=2029
+        self,
+        comm_scheme,
+        ZK,
+        SSS,
+        RP,
+        DOTT,
+        n=4,
+        t=2,
+        q=2**32 - 527,
+        N=1024,
+        p=2029,
     ):
         self.participants: list[BGVParticipant] = []
         self.comm_scheme = comm_scheme
@@ -33,6 +44,7 @@ class BGV:
                     RP,
                     SSS,
                     comm_scheme.cypari,
+                    DOTT,
                 )
             )
 
@@ -140,16 +152,20 @@ class BGV:
 
     def sign(self, m, U):
         wj = []
+        com_j = []
         ctx_r = []
+        random = []
         for i in U:
             temp = self.participants[i].signStep1()
             wj.append(temp[0])
-            ctx_r.append(temp[1])
+            com_j.append(temp[1])
+            ctx_r.append(temp[2])
+            random.append(temp[3])
         ret = []
         for i in U:
             ret.append(
                 self.participants[i].signStep2(
-                    wj, ctx_r, m, [U[0] + 1, U[1] + 1]
+                    wj, com_j, ctx_r, m, [U[0] + 1, U[1] + 1]
                 )
             )
         ds_j = []
@@ -160,7 +176,7 @@ class BGV:
             ds_j.append(temp)
         res = []
         for i in U:
-            res.append(self.participants[i].signStep3(ds_j))
+            res.append(self.participants[i].signStep3(ds_j, random))
         print("MAJOR TEST")
         print(res[0][0] == res[1][0])
         print(res[0][1][0] == res[1][1][0])
@@ -195,7 +211,7 @@ class BGV:
         self.TDKGen()
         self.testTDkeys()
         sign = self.sign(m, [0, 1])
-        print(self.participants[0].verify(sign[0], sign[1], m))
+        print(self.participants[0].verify(sign[0], sign[1], sign[2], m))
         print(ptx)
         print(ptx2)
         return bool(m + m2 == ptx)
@@ -205,5 +221,6 @@ c = CommitmentScheme()
 zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)
-bgv = BGV(c, zk, s, r)
+dott = DOTT()
+bgv = BGV(c, zk, s, r, dott)
 print(bgv.run())

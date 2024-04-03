@@ -4,6 +4,7 @@ from BDLOP16.RelationProofs import RelationProver
 from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, CommitOpen, ProofOfOpenLinear
 from utils.Polynomial import Polynomial
+from DOTT21.DOTT import DOTT
 
 
 class BGVParticipant:
@@ -20,6 +21,7 @@ class BGVParticipant:
         RelationProofs: RelationProver,
         SSS: SecretShare,
         cypari,
+        Dott: DOTT,
     ):
         if i > n:
             raise ValueError()
@@ -36,6 +38,7 @@ class BGVParticipant:
         self.comm_scheme = comm_scheme
         self.RP = RelationProofs
         self.PHp = Polynomial(1024, self.p)
+        self.DOTT = Dott
 
     def step1(self):
         ai = self.PH.uniform_array(1)
@@ -151,7 +154,7 @@ class BGVParticipant:
         return self.pk
 
     def step5(self):
-        ai = self.PH.gaussian_array(1, 1)
+        ai = self.PHp.uniform_array(1)
         hai = hash(ai)
         return (hai, ai)
 
@@ -161,9 +164,9 @@ class BGVParticipant:
             if hash(aj[j]) != haj[j]:
                 raise ValueError(j)
             a += aj[j]
-        self.ats = [self.PHp.in_rq(self.__Rq_to_Rp(a)), 1]
-        si1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
-        si2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        self.ats = [a, 1]
+        si1 = self.PHp.gaussian_array(1, 4)
+        si2 = self.PHp.gaussian_array(1, 4)
         self.si = [
             si1,
             si2,
@@ -198,19 +201,26 @@ class BGVParticipant:
         return self.pkts
 
     def signStep1(self):
-        ri1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
-        ri2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        ri1 = self.PHp.gaussian_array(1, 4)
+        ri2 = self.PHp.gaussian_array(1, 4)
         wi = [
             self.ats[0] * ri1,
             self.ats[1] * ri2,
+        ]
+        random = [self.DOTT.get_r(), self.DOTT.get_r()]
+        com_i = [
+            self.DOTT.com(Commit(wi[0], random[0])),
+            self.DOTT.com(Commit(wi[1], random[1])),
         ]
         ctxri = [
             self.enc(ri1),
             self.enc(ri2),
         ]
-        return (wi, ctxri)
+        return (wi, com_i, ctxri, random)
 
-    def signStep2(self, wj, ctxrj, m, U):
+    def signStep2(self, wj, com_j, ctxrj, m, U):
+        self.wj = wj
+        self.com_j = com_j
         self.w = [0, 0]
         self.ctx_r = [0, 0]
         for i in range(len(wj)):
@@ -220,16 +230,8 @@ class BGVParticipant:
                 self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
             ]
         self.c = self.RP.ZK.d_sigma(
-            self.comm_scheme.cypari.Pol(
-                self.comm_scheme.cypari.Vec(
-                    self.comm_scheme.cypari.liftall(self.w[0])
-                )
-            ),
-            self.comm_scheme.cypari.Pol(
-                self.comm_scheme.cypari.Vec(
-                    self.comm_scheme.cypari.liftall(self.w[1])
-                )
-            ),
+            self.com_j[0],
+            self.com_j[1],
             self.pkts[0],
             m,
         )
@@ -243,37 +245,42 @@ class BGVParticipant:
         ]
         return ds_i
 
-    def signStep3(self, ds_j):
+    def signStep3(self, ds_j, random):
+        # for i in range(len(self.wj)): #TODO: MAKE THIS CHECK OPEN WORK
+        #     if not self.DOTT.open(
+        #         CommitOpen(self.com_j[i][0], m=self.wj[i][0], r=random[0])
+        #     ):
+        #         raise ValueError
+        #     if not self.DOTT.open(
+        #         CommitOpen(self.com_j[i][1], m=self.wj[i][1], r=random[1])
+        #     ):
+        #         raise ValueError
         z = [
             self.comb(self.ctx_z[0][1], ds_j[0]),
             self.comb(self.ctx_z[1][1], ds_j[1]),
         ]
-        print("Z")
-        print(z[0])
-        return (self.c, z)
+        p = [0, 0]
+        for i in random:
+            p = [p[0] + i[0], p[1] + i[1]]
+        return (self.c, z, p)
 
-    def verify(self, c, z, m):
+    def verify(self, c, z, p, m):
         q = [
             self.ats[0] * z[0] - (c * self.y[0]),
             self.ats[1] * z[1] - c * self.y[1],
         ]
+        q = [
+            self.DOTT.com(Commit(q[0], p[0])),
+            self.DOTT.com(Commit(q[1], p[1])),
+        ]
         if c - self.PHp.in_rq(
             self.RP.ZK.d_sigma(
-                self.comm_scheme.cypari.Pol(
-                    self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(q[0])
-                    )
-                ),
-                self.comm_scheme.cypari.Pol(
-                    self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(q[1])
-                    )
-                ),
+                q[0],
+                q[1],
                 self.pkts[0],
                 m,
             )
         ) == self.PHp.in_rq("0"):
-            print("IF THIS PRINTS IT WORKS")
             return True
         return False
 
