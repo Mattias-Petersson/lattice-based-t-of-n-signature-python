@@ -219,16 +219,14 @@ class BGVParticipant:
                 self.add_ctx(self.ctx_r[0], ctxrj[i][0]),
                 self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
             ]
-        self.c = self.PHp.in_rq(
-            self.RP.ZK.d_sigma(
-                self.comm_scheme.cypari.Pol(
-                    self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(self.w[0])
-                    )
-                ),
-                self.pkts[0],
-                m,
-            )
+        self.c = self.RP.ZK.d_sigma(
+            self.comm_scheme.cypari.Pol(
+                self.comm_scheme.cypari.Vec(
+                    self.comm_scheme.cypari.liftall(self.w[0])
+                )
+            ),
+            self.pkts[0],
+            m,
         )
         self.ctx_z = [
             self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), self.ctx_r[0]),
@@ -245,12 +243,14 @@ class BGVParticipant:
             self.comb(self.ctx_z[0][1], ds_j[0]),
             self.comb(self.ctx_z[1][1], ds_j[1]),
         ]
+        print("Z")
+        print(z[0])
         return (self.c, z)
 
     def verify(self, c, z, m):
         q = [
-            self.ats[0] * z[0],  # - (c * self.y[0]),
-            self.ats[1] * z[1],  # - c * self.y[1],
+            self.ats[0] * z[0] - (c * self.y[0]),
+            self.ats[1] * z[1] - c * self.y[1],
         ]
         if c - self.PHp.in_rq(
             self.RP.ZK.d_sigma(
