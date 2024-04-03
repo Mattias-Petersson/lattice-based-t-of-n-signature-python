@@ -225,6 +225,11 @@ class BGVParticipant:
                     self.comm_scheme.cypari.liftall(self.w[0])
                 )
             ),
+            self.comm_scheme.cypari.Pol(
+                self.comm_scheme.cypari.Vec(
+                    self.comm_scheme.cypari.liftall(self.w[1])
+                )
+            ),
             self.pkts[0],
             m,
         )
@@ -257,6 +262,11 @@ class BGVParticipant:
                 self.comm_scheme.cypari.Pol(
                     self.comm_scheme.cypari.Vec(
                         self.comm_scheme.cypari.liftall(q[0])
+                    )
+                ),
+                self.comm_scheme.cypari.Pol(
+                    self.comm_scheme.cypari.Vec(
+                        self.comm_scheme.cypari.liftall(q[1])
                     )
                 ),
                 self.pkts[0],
