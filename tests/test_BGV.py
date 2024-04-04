@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from BGV122.BGV import BGV
 from type.classes import SecretSharePoly
@@ -12,6 +13,13 @@ def bgv():
 @pytest.fixture(scope="session", autouse=True)
 def make_Dkgen(bgv):
     return bgv.DKGen()
+
+
+@pytest.fixture()
+def get_t_entries(bgv, make_Dkgen):
+    _, sec = make_Dkgen
+    indices = np.random.choice(bgv.n, size=bgv.t, replace=False)
+    return [sec[i] for i in indices]
 
 
 def test_all_a_match(bgv):
@@ -30,33 +38,44 @@ def test_all_b_match(bgv):
     assert len(set(all_b)) == 1
 
 
-def test_s(bgv, make_Dkgen):
+def test_s(bgv, get_t_entries):
     """
     The summed up s of all s_i from all participants
     should be the same as the reconstructed version of
     t secret keys.
     """
 
-    _, sec = make_Dkgen
     all_s = bgv._BGV__recv_value("s")
     all_s_sum = sum([i.data for i in all_s])
-    p1 = SecretSharePoly(x=sec[0].x, p=sec[0].commit.m)
-    p2 = SecretSharePoly(x=sec[1].x, p=sec[1].commit.m)
-    new_s = bgv.secret_share.reconstruct_poly([p1, p2])
+    polynomials = [
+        SecretSharePoly(x=sk.x, p=sk.commit.m) for sk in get_t_entries
+    ]
+    new_s = bgv.secret_share.reconstruct_poly(polynomials)
     assert new_s == all_s_sum
 
 
-def test_valid_comb(bgv, make_Dkgen):
+def test_valid_comb(bgv, get_t_entries):
     """
     Test that a valid combination of secret keys always
+    decrypt properly.
+    """
+    m = bgv.get_message()
+    u, v = bgv.enc(m)
+    d = bgv.t_dec(get_t_entries, u)
+    decrypted = bgv.comb(v, d)
+    assert decrypted == m
+
+
+def test_all_participants(bgv, make_Dkgen):
+    """
+    All participants participating should be able to
     decrypt properly.
     """
     _, sec = make_Dkgen
     m = bgv.get_message()
     u, v = bgv.enc(m)
-    d = bgv.t_dec([sec[0], sec[1], sec[2]], u)
-    decrypted = bgv.comb(v, d)
-    assert decrypted == m
+    d = bgv.t_dec(sec, u)
+    assert bgv.comb(v, d) == m
 
 
 def test_invalid_comb(bgv, make_Dkgen):
