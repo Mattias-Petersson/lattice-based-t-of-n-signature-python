@@ -1,16 +1,17 @@
 import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from BGV122.Participant import Participant
+from BGV122.BGVParticipant import BGVParticipant
 from type.classes import NameData, Sk, poly
+from Controller.Controller import Controller
 from utils.Polynomial import Polynomial
 
 
-class BGV:
+class BGV(Controller):
     def __init__(
         self,
-        t: int = 2,
-        n: int = 4,
+        t: int = 3,
+        n: int = 5,
         p: int = 2029,
         q: int = 2**32 - 527,
         N: int = 1024,
@@ -25,44 +26,11 @@ class BGV:
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare((self.t, self.n), self.q)
-        self.participants: tuple[Participant, ...] = tuple(
-            Participant(self.comm_scheme, self.secret_share, self.p)
+        self.participants: tuple[BGVParticipant, ...] = tuple(
+            BGVParticipant(self.comm_scheme, self.secret_share, self.p)
             for _ in range(n)
         )
-        self.names = [i.name for i in self.participants]
-
-    def __recv_value(self, attr):
-        try:
-            return [i.share_attr(attr) for i in self.participants]
-        except Exception as e:
-            raise ValueError(
-                f"Invalid attribute name in class Participant: {attr}, {e}"
-            )
-
-    def __recv_value_shared(self, attr):
-        return tuple(i.share_others_attr(attr) for i in self.participants)
-
-    def __share_data(self, attr, data):
-        for i in self.participants:
-            res = tuple(filter(lambda p: p.name != i.name, data))
-            i.recv_from_other(attr, res)
-
-    def __recv_share(self, attr_name: str):
-        return self.__share_data(attr_name, self.__recv_value(attr_name))
-
-    def __assert_value_matches_hash(self, attr):
-        """
-        Takes in the hash of an attr all participants, then all values. Then each
-        participant does a check if the hashes they received correspond to the
-        value they received when hashed.
-        """
-        self.__recv_share(attr + "_hash")
-        self.__recv_share(attr)
-        for i in self.participants:
-            if not i.compare_hash(attr).data:
-                raise ValueError(
-                    f"Aborting. {attr} and {attr}_hash do not match for user {i.name}"
-                )
+        super().__init__(self.participants)
 
     def __compute_b(self):
         """
@@ -70,21 +38,12 @@ class BGV:
         """
         for i in self.participants:
             i.make_b()
-        self.__recv_share("b_hash")
+        self.recv_share("b_hash")
 
     def __share_b_bar(self):
         for i in self.participants:
             i.make_secrets()
-        self.__share_partials("b_bar")
-
-    def __share_partials(self, attr):
-        data = self.__recv_value(attr)
-        shares = dict()
-        for i in data:
-            for j, name in zip(i.data, self.names):
-                shares[name] = shares.get(name, []) + [NameData(i.name, j)]
-        for part in self.participants:
-            part.recv_from_other(attr, shares[part.name])
+        self.share_partials("b_bar")
 
     def __share_commits(self):
         """
@@ -93,9 +52,9 @@ class BGV:
         Each participant then looks at their received values and checks if
         all of them open successfully.
         """
-        self.__share_partials("coms_s_bar")
-        self.__share_partials("c_s_bar")
-        self.__share_partials("c_e_bar")
+        self.share_partials("coms_s_bar")
+        self.share_partials("c_s_bar")
+        self.share_partials("c_e_bar")
         for part in self.participants:
             part.check_open()
 
@@ -103,16 +62,16 @@ class BGV:
         """
         Broadcasts user-specific values between all participants.
         """
-        self.__recv_share("c_s")
-        self.__recv_share("c_e")
-        self.__recv_share("b")
+        self.recv_share("c_s")
+        self.recv_share("c_e")
+        self.recv_share("b")
 
     def __recreate(self):
         """
         Asserts that for all users, their b can be reconstructed from b_bars.
         All combinations are tested for by each participant.
         """
-        data = self.__recv_value_shared("b_bar")
+        data = self.recv_value_shared("b_bar")
         recreated = dict()
         for i in data:
             for j in i.data:
@@ -145,11 +104,11 @@ class BGV:
         throw an error. If all succeed we return a public key and a secret key
         for each participant.
         """
-        self.__assert_value_matches_hash("a")
+        self.assert_value_matches_hash("a")
         self.__compute_b()
         self.__share_b_bar()
         self.__broadcast()
-        self.__assert_value_matches_hash("b")
+        self.assert_value_matches_hash("b")
         self.__recreate()
         self.__share_commits()
         return self.__finalize()
@@ -195,7 +154,8 @@ if __name__ == "__main__":
     for _ in range(100):
         m = bgv.get_message()
         u, v = bgv.enc(m)
-        d = bgv.t_dec([secret_keys[3], secret_keys[0]], u)
+
+        d = bgv.t_dec(secret_keys, u)
         decrypted = bgv.comb(v, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1

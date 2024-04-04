@@ -5,7 +5,7 @@ from type.classes import Commit, CommitOpen, NameData, SecretSharePoly
 import itertools
 
 
-class Participant:
+class BGVParticipant:
     def __init__(
         self, comm_scheme: CommitmentScheme, secret_share: SecretShare, p: int
     ):
