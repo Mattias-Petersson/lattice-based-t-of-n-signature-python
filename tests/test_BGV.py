@@ -45,7 +45,7 @@ def test_s(bgv, get_t_entries):
     t secret keys.
     """
 
-    all_s = bgv._BGV__recv_value("s")
+    all_s = bgv.recv_value("s")
     all_s_sum = sum([i.data for i in all_s])
     polynomials = [
         SecretSharePoly(x=sk.x, p=sk.commit.m) for sk in get_t_entries
