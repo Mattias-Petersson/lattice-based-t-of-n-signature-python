@@ -1,12 +1,14 @@
 import abc
 from abc import abstractmethod
+from typing import Iterable
 
+from Models.Participant import Participant
 from type.classes import NameData
 
 
 class Controller(abc.ABC):
     @abstractmethod
-    def __init__(self, participants):
+    def __init__(self, participants: Iterable[Participant]):
         self.participants = participants
         self.names = [i.name for i in self.participants]
 
