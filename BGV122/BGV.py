@@ -1,36 +1,62 @@
+from typing import Iterable
 import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
-from type.classes import NameData, Sk, poly
-from Controller.Controller import Controller
+from type.classes import TN, BGVValues, NameData, Sk, poly
+from Models.Controller import Controller
 from utils.Polynomial import Polynomial
 
 
 class BGV(Controller):
     def __init__(
         self,
-        t: int = 3,
-        n: int = 5,
+        values: BGVValues | None = None,
         p: int = 2029,
         q: int = 2**32 - 527,
         N: int = 1024,
+        tn: TN | None = None,
     ):
-        self.t = t
-        self.n = n
         self.q = q
         self.N = N
         self.p = p
-        self.comm_scheme = CommitmentScheme(q=self.q, N=self.N)
+        (
+            self.comm_scheme,
+            self.secret_share,
+            self.participants,
+            self.t,
+            self.n,
+        ) = self.__getValues(values, tn)
+
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
-        self.secret_share = SecretShare((self.t, self.n), self.q)
-        self.participants: tuple[BGVParticipant, ...] = tuple(
-            BGVParticipant(self.comm_scheme, self.secret_share, self.p)
-            for _ in range(n)
-        )
+
         super().__init__(self.participants)
+
+    def __getValues(
+        self, values: BGVValues | None, tn: TN | None
+    ) -> tuple[
+        CommitmentScheme, SecretShare, tuple[BGVParticipant, ...], int, int
+    ]:
+        if not (values or tn):
+            raise ValueError(
+                "Requires at least a set of values, or a (t, n) tuple"
+            )
+        if values:
+            return (
+                values.comm_scheme,
+                values.secret_share,
+                values.participants,
+                values.t,
+                values.n,
+            )
+        assert tn is not None
+        t, n = tn
+        comm = CommitmentScheme(q=self.q, N=self.N)
+        secrets = SecretShare((t, n), self.q)
+        part = tuple(BGVParticipant(comm, secrets, self.p) for _ in range(n))
+        return comm, secrets, part, t, n
 
     def __compute_b(self):
         """
@@ -148,7 +174,7 @@ class BGV(Controller):
 
 
 if __name__ == "__main__":
-    bgv = BGV()
+    bgv = BGV(tn=(3, 5))
     public_keys, secret_keys = bgv.DKGen()
     results = dict()
     for _ in range(100):

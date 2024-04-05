@@ -7,7 +7,7 @@ from type.classes import SecretSharePoly
 
 @pytest.fixture(scope="session")
 def bgv():
-    return BGV()
+    return BGV(tn=(3, 5))
 
 
 @pytest.fixture(scope="session", autouse=True)
