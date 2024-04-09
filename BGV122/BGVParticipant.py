@@ -1,20 +1,21 @@
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, CommitOpen, NameData, SecretSharePoly
+from type.classes import Commit, CommitOpen, Pk, SecretSharePoly, Sk
 import itertools
 
 
 class BGVParticipant(Participant):
     def __init__(
-        self, comm_scheme: CommitmentScheme, secret_share: SecretShare, p: int
+        self,
+        comm_scheme: CommitmentScheme,
+        secret_share: SecretShare,
+        p: int,
+        x: int,
     ):
-        super().__init__(comm_scheme, secret_share, p)
-        self.p = p
-        self.h_b: tuple[NameData, ...]
+        super().__init__(comm_scheme, secret_share, p, x)
         self.a = self.polynomial.uniform_element()
         self.a_hash = self.hash(self.a)
-        self.others = dict()
 
     def make_b(self):
         self.sum_a = self.a + sum([i.data for i in self.others["a"]])
@@ -101,7 +102,7 @@ class BGVParticipant(Participant):
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
-
         self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
-        self.sk = Commit(new_com, new_r)
-        return self.c_s_k, self.sk
+        self.pk = Pk(self.sum_a, self.sum_b, self.c_s_k)
+        self.sk = Sk(self.x, Commit(new_com, new_r))
+        return self.pk, self.sk
