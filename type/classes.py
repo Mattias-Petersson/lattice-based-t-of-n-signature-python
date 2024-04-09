@@ -58,6 +58,14 @@ class ProofOfOpenLinear(ProofOfOpen):
             super().__init__(z, t)
 
 
+class Ctx:
+    def __init__(self, u, v):
+        self.u, self.v = u, v
+
+    def __add__(self, other: "Ctx") -> "Ctx":
+        return Ctx(self.u + other.u, self.v + other.v)
+
+
 SecretSharePoly = namedtuple("SecretShare", ["x", "p"])
 NameData = namedtuple("NameData", ["name", "data"])
 Sk = namedtuple("Sk", ["x", "commit"])

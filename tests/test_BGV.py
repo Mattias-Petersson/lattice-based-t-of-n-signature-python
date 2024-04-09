@@ -60,9 +60,9 @@ def test_valid_comb(bgv, get_t_entries):
     decrypt properly.
     """
     m = bgv.get_message()
-    u, v = bgv.enc(m)
-    d = bgv.t_dec(get_t_entries, u)
-    decrypted = bgv.comb(v, d)
+    ctx = bgv.enc(m)
+    d = bgv.t_dec(get_t_entries, ctx)
+    decrypted = bgv.comb(ctx, d)
     assert decrypted == m
 
 
@@ -73,9 +73,9 @@ def test_all_participants(bgv, make_Dkgen):
     """
     _, sec = make_Dkgen
     m = bgv.get_message()
-    u, v = bgv.enc(m)
-    d = bgv.t_dec(sec, u)
-    assert bgv.comb(v, d) == m
+    ctx = bgv.enc(m)
+    d = bgv.t_dec(sec, ctx)
+    assert bgv.comb(ctx, d) == m
 
 
 def test_invalid_comb(bgv, make_Dkgen):
@@ -85,7 +85,7 @@ def test_invalid_comb(bgv, make_Dkgen):
     """
     _, sec = make_Dkgen
     m = bgv.get_message()
-    u, v = bgv.enc(m)
-    d = bgv.t_dec([sec[0]], u)
-    decrypted = bgv.comb(v, d)
+    ctx = bgv.enc(m)
+    d = bgv.t_dec([sec[0]], ctx)
+    decrypted = bgv.comb(ctx, d)
     assert not decrypted == m
