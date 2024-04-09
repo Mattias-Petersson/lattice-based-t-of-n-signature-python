@@ -3,7 +3,7 @@ import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
-from type.classes import TN, BGVValues, NameData, Pk, Sk, poly
+from type.classes import TN, BGVValues, Ctx, NameData, Pk, Sk, poly
 from Models.Controller import Controller
 from utils.Polynomial import Polynomial
 
@@ -140,33 +140,33 @@ class BGV(Controller):
         self.__share_commits()
         return self.__finalize()
 
-    def enc(self, m: poly) -> tuple[poly, poly]:
+    def enc(self, m: poly) -> Ctx:
         r, e_prime, e_bis = [
             self.polynomial.gaussian_element(1) for _ in range(3)
         ]
         mprime = self.cypari.liftall(m)
         u = self.a * r + self.p * e_prime
         v = self.b * r + self.p * e_bis + mprime
-        return u, v
+        return Ctx(u, v)
 
-    def dec(self, sk, u):
+    def dec(self, sk, ctx: Ctx):
         return NotImplementedError("Not implemented for this version.")
 
-    def t_dec(self, sk: list[Sk], u):
+    def t_dec(self, sk: list[Sk], ctx: Ctx):
         lagrange = self.secret_share.lagrange([i.x for i in sk])
-        M = [coeff * com.commit.m * u for coeff, com in zip(lagrange, sk)]
+        M = [coeff * com.commit.m * ctx.u for coeff, com in zip(lagrange, sk)]
         E = [self.polynomial.uniform_element(2) for _ in sk]
         d = [m + self.p * e for m, e in zip(M, E)]
         return d
 
-    def comb(self, v: poly, d: list):
+    def comb(self, ctx: Ctx, d: list):
         round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
         q_half = (self.q - 1) / 2
         q_half_p = q_half % self.p
         helper_array = round_and_pol(np.ones(self.N) * q_half)
-        ptx = self.cypari.liftall(v - sum(d) + helper_array) * self.cypari.Mod(
-            1, self.p
-        )
+        ptx = self.cypari.liftall(
+            ctx.v - sum(d) + helper_array
+        ) * self.cypari.Mod(1, self.p)
         ptx -= round_and_pol(np.ones(self.N) * (q_half_p))
         return ptx
 
@@ -180,10 +180,10 @@ if __name__ == "__main__":
     results = dict()
     for _ in range(100):
         m = bgv.get_message()
-        u, v = bgv.enc(m)
+        ctx = bgv.enc(m)
 
-        d = bgv.t_dec(secret_keys, u)
-        decrypted = bgv.comb(v, d)
+        d = bgv.t_dec(secret_keys, ctx)
+        decrypted = bgv.comb(ctx, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1
     print(results)
