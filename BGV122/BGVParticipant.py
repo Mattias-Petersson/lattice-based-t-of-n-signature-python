@@ -1,7 +1,10 @@
+from typing import Iterable
+
+import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, CommitOpen, Pk, SecretSharePoly, Sk
+from type.classes import Commit, CommitOpen, Ctx, Pk, SecretSharePoly, Sk
 import itertools
 
 
@@ -10,11 +13,14 @@ class BGVParticipant(Participant):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        q: int,
         p: int,
+        N: int,
         x: int,
     ):
-        super().__init__(comm_scheme, secret_share, p, x)
+        super().__init__(comm_scheme, secret_share, q, p, N, x)
         self.a = self.polynomial.uniform_element()
+        self.cypari = self.polynomial.cypari
         self.a_hash = self.hash(self.a)
 
     def make_b(self):
@@ -106,3 +112,26 @@ class BGVParticipant(Participant):
         self.pk = Pk(self.sum_a, self.sum_b, self.c_s_k)
         self.sk = Sk(self.x, Commit(new_com, new_r))
         return self.pk, self.sk
+
+    def enc(self, m) -> Ctx:
+        r, e_prime, e_bis = self.polynomial.gaussian_array(3, 1)
+        mprime = self.cypari.liftall(m)
+        u = self.sum_a * r + self.p * e_prime
+        v = self.sum_b * r + self.p * e_bis + mprime
+        return Ctx(u, v)
+
+    def t_dec(self, ctx: Ctx, x: int):
+        m = self.sk.commit.m * ctx.u * x
+        e = self.polynomial.uniform_element(2)
+        return m + self.p * e
+
+    def comb(self, ctx, d: list):
+        round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
+        q_half = (self.q - 1) / 2
+        q_half_p = q_half % self.p
+        helper_array = round_and_pol(np.ones(self.N) * q_half)
+        ptx = self.cypari.liftall(
+            ctx.v - sum(d) + helper_array
+        ) * self.cypari.Mod(1, self.p)
+        ptx -= round_and_pol(np.ones(self.N) * (q_half_p))
+        return ptx
