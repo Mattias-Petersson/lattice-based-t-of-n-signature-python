@@ -3,7 +3,7 @@ import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
-from type.classes import TN, BGVValues, NameData, Sk, poly
+from type.classes import TN, BGVValues, NameData, Pk, Sk, poly
 from Models.Controller import Controller
 from utils.Polynomial import Polynomial
 
@@ -55,7 +55,9 @@ class BGV(Controller):
         t, n = tn
         comm = CommitmentScheme(q=self.q, N=self.N)
         secrets = SecretShare((t, n), self.q)
-        part = tuple(BGVParticipant(comm, secrets, self.p) for _ in range(n))
+        part = tuple(
+            BGVParticipant(comm, secrets, self.p, i + 1) for i in range(n)
+        )
         return comm, secrets, part, t, n
 
     def __compute_b(self):
@@ -113,16 +115,15 @@ class BGV(Controller):
             raise ValueError(f"Users did not get matching values for {attr}")
         return all_attr.pop()
 
-    def __finalize(self) -> tuple[list, list[Sk]]:
+    def __finalize(self) -> tuple[Pk, list[Sk]]:
         keys = dict()
-        for idx, part in enumerate(self.participants):
+        for part in self.participants:
             pk, sk = part.generate_final()
-            keys["sk"] = keys.get("sk", []) + [Sk(part.name, idx + 1, sk)]
+            keys["sk"] = keys.get("sk", []) + [sk]
             keys["pk"] = keys.get("pk", []) + [pk]
-
         self.a = self.__check_equiv("sum_a")
         self.b = self.__check_equiv("sum_b")
-        return keys["pk"], keys["sk"]
+        return Pk(self.a, self.b, keys["pk"]), keys["sk"]
 
     def DKGen(self):
         """
