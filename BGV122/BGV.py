@@ -56,7 +56,8 @@ class BGV(Controller):
         comm = CommitmentScheme(q=self.q, N=self.N)
         secrets = SecretShare((t, n), self.q)
         part = tuple(
-            BGVParticipant(comm, secrets, self.p, i + 1) for i in range(n)
+            BGVParticipant(comm, secrets, self.q, self.p, self.N, i + 1)
+            for i in range(n)
         )
         return comm, secrets, part, t, n
 
@@ -115,15 +116,12 @@ class BGV(Controller):
             raise ValueError(f"Users did not get matching values for {attr}")
         return all_attr.pop()
 
-    def __finalize(self) -> tuple[Pk, list[Sk]]:
-        keys = dict()
+    def __finalize(self):
         for part in self.participants:
-            pk, sk = part.generate_final()
-            keys["sk"] = keys.get("sk", []) + [sk]
-            keys["pk"] = keys.get("pk", []) + [pk]
-        self.a = self.__check_equiv("sum_a")
-        self.b = self.__check_equiv("sum_b")
-        return Pk(self.a, self.b, keys["pk"]), keys["sk"]
+            part.generate_final()
+        self.__check_equiv("sum_a")
+        self.__check_equiv("sum_b")
+        return self.participants
 
     def DKGen(self):
         """
@@ -140,35 +138,22 @@ class BGV(Controller):
         self.__share_commits()
         return self.__finalize()
 
-    def enc(self, m: poly) -> Ctx:
-        r, e_prime, e_bis = [
-            self.polynomial.gaussian_element(1) for _ in range(3)
-        ]
-        mprime = self.cypari.liftall(m)
-        u = self.a * r + self.p * e_prime
-        v = self.b * r + self.p * e_bis + mprime
-        return Ctx(u, v)
+    def enc(self, u: BGVParticipant, m: poly) -> Ctx:
+        return u.enc(m)
 
     def dec(self, sk, ctx: Ctx):
         return NotImplementedError("Not implemented for this version.")
 
-    def t_dec(self, sk: list[Sk], ctx: Ctx):
-        lagrange = self.secret_share.lagrange([i.x for i in sk])
-        M = [coeff * com.commit.m * ctx.u for coeff, com in zip(lagrange, sk)]
-        E = [self.polynomial.uniform_element(2) for _ in sk]
-        d = [m + self.p * e for m, e in zip(M, E)]
+    def participant_lagrange(self, U: Iterable[BGVParticipant]) -> list[int]:
+        return self.secret_share.lagrange([i.x for i in U])
+
+    def t_dec(self, U: Iterable[BGVParticipant], ctx: Ctx):
+        x_list = self.participant_lagrange(U)
+        d = [part.t_dec(ctx, x) for part, x in zip(U, x_list)]
         return d
 
-    def comb(self, ctx: Ctx, d: list):
-        round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
-        q_half = (self.q - 1) / 2
-        q_half_p = q_half % self.p
-        helper_array = round_and_pol(np.ones(self.N) * q_half)
-        ptx = self.cypari.liftall(
-            ctx.v - sum(d) + helper_array
-        ) * self.cypari.Mod(1, self.p)
-        ptx -= round_and_pol(np.ones(self.N) * (q_half_p))
-        return ptx
+    def comb(self, u: BGVParticipant, ctx: Ctx, d: list):
+        return u.comb(ctx, d)
 
     def get_message(self):
         return self.message_space.uniform_element()
@@ -176,14 +161,15 @@ class BGV(Controller):
 
 if __name__ == "__main__":
     bgv = BGV(tn=(3, 5))
-    public_keys, secret_keys = bgv.DKGen()
+    participants = bgv.DKGen()
+    part = next(iter(participants))
     results = dict()
     for _ in range(100):
         m = bgv.get_message()
-        ctx = bgv.enc(m)
-
-        d = bgv.t_dec(secret_keys, ctx)
-        decrypted = bgv.comb(ctx, d)
+        ctx = bgv.enc(part, m)
+        d = bgv.t_dec(participants, ctx)
+        decrypted = bgv.comb(part, ctx, d)
+        decrypted2 = part.comb(ctx, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1
     print(results)

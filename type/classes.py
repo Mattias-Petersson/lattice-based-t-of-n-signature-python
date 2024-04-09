@@ -65,6 +65,11 @@ class Ctx:
     def __add__(self, other: "Ctx") -> "Ctx":
         return Ctx(self.u + other.u, self.v + other.v)
 
+    def __mul__(self, n: poly) -> "Ctx":
+        return Ctx(self.u * n, self.v * n)
+
+    __rmul__ = __mul__
+
 
 SecretSharePoly = namedtuple("SecretShare", ["x", "p"])
 NameData = namedtuple("NameData", ["name", "data"])

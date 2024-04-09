@@ -13,7 +13,9 @@ class Participant(ABC):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        q: int,
         p: int,
+        N: int,
         x: int,
     ):
         self.name = (
@@ -21,7 +23,9 @@ class Participant(ABC):
             + "_"
             + str(np.random.randint(1000))
         )
+        self.q = q
         self.p = p
+        self.N = N
         # what x that is associated with this participant's secret shares.
         self.x = x
         self.comm_scheme = comm_scheme
