@@ -151,7 +151,7 @@ class BGVParticipant:
         return self.pk
 
     def step5(self):
-        ai = self.PH.gaussian_array(1, 1)
+        ai = self.PH.uniform_array(1)
         hai = hash(ai)
         return (hai, ai)
 
@@ -161,9 +161,9 @@ class BGVParticipant:
             if hash(aj[j]) != haj[j]:
                 raise ValueError(j)
             a += aj[j]
-        self.ats = [self.PHp.in_rq(self.__Rq_to_Rp(a)), 1]
-        si1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
-        si2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        self.ats = [a, 1]
+        si1 = self.PHp.gaussian_array(1, 4)
+        si2 = self.PHp.gaussian_array(1, 4)
         self.si = [
             si1,
             si2,
@@ -198,8 +198,8 @@ class BGVParticipant:
         return self.pkts
 
     def signStep1(self):
-        ri1 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
-        ri2 = self.PHp.in_rq(self.__Rq_to_Rp(self.PH.gaussian_array(1, 1)))
+        ri1 = self.PHp.gaussian_array(1, 4)
+        ri2 = self.PHp.gaussian_array(1, 4)
         wi = [
             self.ats[0] * ri1,
             self.ats[1] * ri2,
@@ -273,7 +273,6 @@ class BGVParticipant:
                 m,
             )
         ) == self.PHp.in_rq("0"):
-            print("IF THIS PRINTS IT WORKS")
             return True
         return False
 
