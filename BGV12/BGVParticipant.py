@@ -168,11 +168,12 @@ class BGVParticipant:
             si1,
             si2,
         ]
-        self.yi = [
+        yi = [
             self.ats[0] * si1,
             si2,
         ]
-        return hash(self.yi[0]) + hash(self.yi[1])
+        self.yi = sum(yi)
+        return hash(self.yi)
 
     def step7(self, hyj):
         self.hyj = hyj
@@ -183,13 +184,12 @@ class BGVParticipant:
         return (self.yi, ctx_si)
 
     def step8(self, yj, ctx_sj):
-        self.y = [0, 0]
+        self.y = sum(yj)
         self.ctx_s = [0, 0]
         for j in range(len(yj)):
-            if hash(yj[j][0]) + hash(yj[j][1]) != self.hyj[j]:
+            if hash(yj[j]) != self.hyj[j]:
                 raise ValueError(j)
             # TODO: verify proof_sj
-            self.y = [self.y[0] + yj[j][0], self.y[1] + yj[j][1]]
             self.ctx_s = [
                 self.add_ctx(self.ctx_s[0], ctx_sj[j][0]),
                 self.add_ctx(self.ctx_s[1], ctx_sj[j][1]),
@@ -200,10 +200,7 @@ class BGVParticipant:
     def signStep1(self):
         ri1 = self.PHp.gaussian_array(1, 4)
         ri2 = self.PHp.gaussian_array(1, 4)
-        wi = [
-            self.ats[0] * ri1,
-            self.ats[1] * ri2,
-        ]
+        wi = self.ats[0] * ri1 + self.ats[1] * ri2
         ctxri = [
             self.enc(ri1),
             self.enc(ri2),
@@ -211,10 +208,9 @@ class BGVParticipant:
         return (wi, ctxri)
 
     def signStep2(self, wj, ctxrj, m, U):
-        self.w = [0, 0]
+        self.w = sum(wj)
         self.ctx_r = [0, 0]
         for i in range(len(wj)):
-            self.w = [self.w[0] + wj[i][0], self.w[1] + wj[i][1]]
             self.ctx_r = [
                 self.add_ctx(self.ctx_r[0], ctxrj[i][0]),
                 self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
@@ -222,12 +218,7 @@ class BGVParticipant:
         self.c = self.RP.ZK.d_sigma(
             self.comm_scheme.cypari.Pol(
                 self.comm_scheme.cypari.Vec(
-                    self.comm_scheme.cypari.liftall(self.w[0])
-                )
-            ),
-            self.comm_scheme.cypari.Pol(
-                self.comm_scheme.cypari.Vec(
-                    self.comm_scheme.cypari.liftall(self.w[1])
+                    self.comm_scheme.cypari.liftall(self.w)
                 )
             ),
             self.pkts[0],
@@ -253,20 +244,12 @@ class BGVParticipant:
         return (self.c, z)
 
     def verify(self, c, z, m):
-        q = [
-            self.ats[0] * z[0] - (c * self.y[0]),
-            self.ats[1] * z[1] - c * self.y[1],
-        ]
+        q = self.ats[0] * z[0] + self.ats[1] * z[1] - (c * self.y)
         if c - self.PHp.in_rq(
             self.RP.ZK.d_sigma(
                 self.comm_scheme.cypari.Pol(
                     self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(q[0])
-                    )
-                ),
-                self.comm_scheme.cypari.Pol(
-                    self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(q[1])
+                        self.comm_scheme.cypari.liftall(q)
                     )
                 ),
                 self.pkts[0],
