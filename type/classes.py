@@ -78,3 +78,4 @@ Pk = namedtuple("Pk", ["a", "b", "commits"])
 BGVValues = namedtuple(
     "BGVValues", ["participants", "comm_scheme", "secret_share", "t", "n"]
 )
+Signature = namedtuple("Signature", ["c", "z", "rho"])

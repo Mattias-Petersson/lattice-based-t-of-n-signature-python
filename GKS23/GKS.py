@@ -5,7 +5,7 @@ from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
 from Models.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import BGVValues, Sk, poly
+from type.classes import BGVValues, NameData, Signature, Sk, poly
 from utils.Polynomial import Polynomial
 
 
@@ -47,7 +47,16 @@ class GKS(Controller):
             self.n,
         )
         self.BGV = BGV(bgv_values, p, q, N)
+        self.BGV.DKGen()
         super().__init__(self.participants)
+
+    def __get_from_subset(self, attr, U: Iterable[GKSParticipant]):
+        return [i.share_attr(attr) for i in U]
+
+    def __send_to_subset(self, attr, U: Iterable[GKSParticipant]):
+        data = self.__get_from_subset(attr, U)
+        for i in U:
+            i.recv_from_subset(attr, data)
 
     def __KGen_step_2(self):
         self.assert_value_matches_hash("a")
@@ -75,17 +84,40 @@ class GKS(Controller):
         self.__KGen_step_3()
         return self.__finalize()
 
+    def __sign_1(self, mu: poly, U: Iterable[GKSParticipant]):
+        for p in U:
+            p.sign_1(mu)
+        self.__send_to_subset("ctx_r", U)
+        self.__send_to_subset("w", U)
+
+    def __sign_2(self, mu: poly, U: Iterable[GKSParticipant], lagrange_x):
+        for p, x in zip(U, lagrange_x):
+            p.sign_2(mu, x)
+        self.__send_to_subset("ds", U)
+        self.__send_to_subset("com_w", U)
+
+    def sign(self, mu: poly, U: Iterable[GKSParticipant]) -> list[Signature]:
+        lagrange_x = self.BGV.participant_lagrange(U)
+        self.__sign_1(mu, U)
+        self.__sign_2(mu, U, lagrange_x)
+        return [p.generate_signature() for p in U]
+
+    def vrfy(self, mu, u: GKSParticipant, signature: Signature):
+        u.verify_signature(mu, signature)
+
 
 if __name__ == "__main__":
     gks = GKS(**default_values)
-    bgv_participants = gks.BGV.DKGen()
-    part = next(iter(bgv_participants))
     results = dict()
     participants = gks.KGen()
+    m_sign = gks.BGV.get_message()
+    part = next(iter(participants))
+    signatures = gks.sign(m_sign, participants[:2])
+    gks.vrfy(m_sign, participants[0], signatures[0])
     for _ in range(100):
         m = gks.BGV.get_message()
         ctx = part.enc(m)
-        d = gks.BGV.t_dec(bgv_participants[: gks.BGV.t], ctx)
+        d = gks.BGV.t_dec(participants[: gks.BGV.t], ctx)
         decrypted = part.comb(ctx, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1
