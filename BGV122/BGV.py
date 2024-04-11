@@ -1,9 +1,8 @@
 from typing import Iterable
-import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
-from type.classes import TN, BGVValues, Ctx, NameData, Pk, Sk, poly
+from type.classes import TN, BGVValues, Ctx, NameData, poly
 from Models.Controller import Controller
 from utils.Polynomial import Polynomial
 

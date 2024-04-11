@@ -4,7 +4,7 @@ import numpy as np
 from BDLOP16.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, CommitOpen, Ctx, Pk, SecretSharePoly, Sk
+from type.classes import Commit, CommitOpen, Ctx, BgvPk, SecretSharePoly, BgvSk
 import itertools
 
 
@@ -109,8 +109,8 @@ class BGVParticipant(Participant):
             new_com += com.data.m
             new_r += com.data.r
         self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
-        self.pk = Pk(self.sum_a, self.sum_b, self.c_s_k)
-        self.sk = Sk(self.x, Commit(new_com, new_r))
+        self.pk = BgvPk(self.sum_a, self.sum_b, self.c_s_k)
+        self.sk = BgvSk(self.x, Commit(new_com, new_r))
         return self.pk, self.sk
 
     def enc(self, m) -> Ctx:

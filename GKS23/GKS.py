@@ -5,7 +5,7 @@ from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
 from Models.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import BGVValues, NameData, Signature, Sk, poly
+from type.classes import BGVValues, Signature, poly
 from utils.Polynomial import Polynomial
 
 
@@ -114,11 +114,11 @@ if __name__ == "__main__":
     part = next(iter(participants))
     signatures = gks.sign(m_sign, participants[:2])
     gks.vrfy(m_sign, participants[0], signatures[0])
-    for _ in range(100):
+    """for _ in range(100):
         m = gks.BGV.get_message()
         ctx = part.enc(m)
         d = gks.BGV.t_dec(participants[: gks.BGV.t], ctx)
         decrypted = part.comb(ctx, d)
         res = decrypted == m
         results[res] = results.get(res, 0) + 1
-    print(results)
+    print(results)"""

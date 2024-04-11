@@ -73,9 +73,10 @@ class Ctx:
 
 SecretSharePoly = namedtuple("SecretShare", ["x", "p"])
 NameData = namedtuple("NameData", ["name", "data"])
-Sk = namedtuple("Sk", ["x", "commit"])
-Pk = namedtuple("Pk", ["a", "b", "commits"])
+BgvSk = namedtuple("BgvSk", ["x", "commit"])
+BgvPk = namedtuple("BgvPk", ["a", "b", "commits"])
 BGVValues = namedtuple(
     "BGVValues", ["participants", "comm_scheme", "secret_share", "t", "n"]
 )
+GksPk = namedtuple("GksPk", ["a", "y"])
 Signature = namedtuple("Signature", ["c", "z", "rho"])
