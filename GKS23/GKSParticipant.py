@@ -54,7 +54,7 @@ class GKSParticipant(BGVParticipant):
 
     def KGen_step_4(self):
         sum_y = self.y + sum([i.data for i in self.others["y"]])
-        self.sum_ctx_s = self.__sum_ctx_s()
+        self.sum_ctx_s: list[Ctx] = self.__sum_ctx_s()
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self, mu):
@@ -68,9 +68,9 @@ class GKSParticipant(BGVParticipant):
     def sign_2(self, mu, x: int):
         self.c: poly = self.hash((self.w, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.ctx_s]
-        self.sum_ctx_r = self.__sum_ctx_r()
+        sum_ctx_r = self.__sum_ctx_r()
         self.ctx_z: list[Ctx] = [
-            c + r for c, r in zip(c_ctx, self.sum_ctx_r, strict=True)
+            c + r for c, r in zip(c_ctx, sum_ctx_r, strict=True)
         ]
         self.ds = [self.t_dec(z, x) for z in self.ctx_z]
 

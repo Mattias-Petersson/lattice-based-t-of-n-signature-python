@@ -68,6 +68,12 @@ class Ctx:
     def __mul__(self, n: poly) -> "Ctx":
         return Ctx(self.u * n, self.v * n)
 
+    def __eq__(self, other: "Ctx"):
+        return self.u == other.u and self.v == other.v
+
+    def __hash__(self):
+        return hash((str(self.u), str(self.v)))
+
     __rmul__ = __mul__
 
 
