@@ -63,3 +63,24 @@ def test_same_z(sign):
     z_0 = [s.z[0] for s in sign]
     z_1 = [s.z[1] for s in sign]
     assert equal_arrs(z_0, z_1)
+
+
+def test_verify_valid_signature(gks, sign):
+    """
+    Ensure that a signature is valid for the same message.
+    """
+    m, U, sign = sign
+    one_part = next(iter(U))
+    one_signature = next(iter(sign))
+    assert gks.vrfy(m, one_part, one_signature)
+
+
+def test_verify_invalid_signature(gks, sign):
+    """
+    Verify that trying to verify an invalid signature fails.
+    """
+    _, U, sign = sign
+    m_prime = gks.BGV.get_message()
+    one_part = next(iter(U))
+    one_signature = next(iter(sign))
+    assert not gks.vrfy(m_prime, one_part, one_signature)
