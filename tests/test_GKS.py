@@ -19,7 +19,19 @@ def participants_KGen(gks):
 def sign(gks):
     m = gks.BGV.get_message()
     U = gks.participants[: gks.t]
-    return gks.sign(m, U)
+    return m, U, gks.sign(m, U)
+
+
+def equal_arrs(*args):
+    return all([len(set(i)) == 1 for i in args])
+
+
+def split_values(lst):
+    l_0, l_1 = [], []
+    for ctx in lst:
+        l_0.append(ctx[0])
+        l_1.append(ctx[1])
+    return equal_arrs(l_0, l_1)
 
 
 def test_same_pk(participants_KGen):
@@ -30,8 +42,7 @@ def test_same_pk(participants_KGen):
     all_pk: list[GksPk] = [u.pk for u in participants_KGen]
     all_a = [i.a[1] for i in all_pk]
     all_y = [i.y for i in all_pk]
-    assert len(set(all_a)) == 1
-    assert len(set(all_y)) == 1
+    assert equal_arrs(all_a, all_y)
 
 
 def test_same_sum_ctx_s(participants_KGen):
@@ -41,9 +52,14 @@ def test_same_sum_ctx_s(participants_KGen):
     ctx_s.
     """
     all_sum_ctx_s: list[list[Ctx]] = [u.sum_ctx_s for u in participants_KGen]
-    s_1, s_2 = [], []
-    for ctx_list in all_sum_ctx_s:
-        s_1.append(ctx_list[0])
-        s_2.append(ctx_list[1])
-    assert len(set(s_1)) == 1
-    assert len(set(s_2)) == 1
+    assert split_values(all_sum_ctx_s)
+
+
+def test_same_z(sign):
+    """
+    Combining shares should produce the same z
+    """
+    *_, sign = sign
+    z_0 = [s.z[0] for s in sign]
+    z_1 = [s.z[1] for s in sign]
+    assert equal_arrs(z_0, z_1)

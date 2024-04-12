@@ -32,6 +32,7 @@ class GKS(Controller):
             GKSParticipant(
                 self.comm_scheme,
                 self.secret_share,
+                self.message_space,
                 self.q,
                 self.p,
                 self.N,
@@ -111,8 +112,13 @@ if __name__ == "__main__":
     results = dict()
     participants = gks.KGen()
     m_sign = gks.BGV.get_message()
-    part = next(iter(participants))
+    part = participants[0]
     signatures = gks.sign(m_sign, participants[:2])
+    """print("Signatures, ", signatures)
+    for s in signatures:
+        print()
+        print(s)
+        print("-" * 10)"""
     gks.vrfy(m_sign, participants[0], signatures[0])
     """for _ in range(100):
         m = gks.BGV.get_message()
