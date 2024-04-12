@@ -70,7 +70,9 @@ class GKSParticipant(BGVParticipant):
         self.ctx_r = [self.enc(i) for i in r]
 
     def sign_2(self, mu, x: int):
-        self.all_w = sum([u.data for u in self.from_u["w"]])
+        self.all_w = self.cypari.liftall(
+            sum([u.data for u in self.from_u["w"]])
+        )
         self.c: poly = self.hash((self.all_w, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
@@ -80,28 +82,18 @@ class GKSParticipant(BGVParticipant):
         self.ds = [self.t_dec(z, x) for z in self.ctx_z]
 
     def generate_signature(self) -> Signature:
-        d0 = []
-        d1 = []
-        temp_data = self.from_u["ds"]
-        d_temp_0, d_temp_1 = [], []
-        d_temp_0.append(temp_data[0].data[0])
-        d_temp_0.append(temp_data[1].data[0])
-        d_temp_1.append(temp_data[0].data[1])
-        d_temp_1.append(temp_data[1].data[1])
-
+        d0, d1 = [], []
         for d in self.from_u["ds"]:
             d0.append(d.data[0])
             d1.append(d.data[1])
 
-        z = [
-            self.comb(z, d)
-            for z, d in zip(self.ctx_z, [d_temp_0, d_temp_1], strict=True)
-        ]
-
+        z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
         rho = sum([com.data.r for com in self.from_u["com_w"]])
         return Signature(self.c, z, rho)
 
     def verify_signature(self, mu, signature: Signature):
         az = self.__cross_prod(self.a_vector, signature.z)
         cy = signature.c * self.pk.y
-        assert self.all_w == az - cy
+        w_star = self.cypari.liftall(az - cy)
+        hashed = self.hash((w_star, self.pk, mu))
+        return hashed == self.c

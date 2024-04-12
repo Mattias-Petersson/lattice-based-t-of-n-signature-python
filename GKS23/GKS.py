@@ -104,7 +104,7 @@ class GKS(Controller):
         return [p.generate_signature() for p in U]
 
     def vrfy(self, mu, u: GKSParticipant, signature: Signature):
-        u.verify_signature(mu, signature)
+        return u.verify_signature(mu, signature)
 
 
 if __name__ == "__main__":
@@ -114,17 +114,4 @@ if __name__ == "__main__":
     m_sign = gks.BGV.get_message()
     part = participants[0]
     signatures = gks.sign(m_sign, participants[:2])
-    """print("Signatures, ", signatures)
-    for s in signatures:
-        print()
-        print(s)
-        print("-" * 10)"""
-    gks.vrfy(m_sign, participants[0], signatures[0])
-    """for _ in range(100):
-        m = gks.BGV.get_message()
-        ctx = part.enc(m)
-        d = gks.BGV.t_dec(participants[: gks.BGV.t], ctx)
-        decrypted = part.comb(ctx, d)
-        res = decrypted == m
-        results[res] = results.get(res, 0) + 1
-    print(results)"""
+    print(gks.vrfy(m_sign, participants[0], signatures[0]))
