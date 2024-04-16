@@ -1,12 +1,15 @@
+from operator import itemgetter
 import pytest
 
 from DOTT21.DOTT import DOTT
 from type.classes import CommitOpen
+from Models.values import default_values
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def dott():
-    return DOTT()
+    q, N = itemgetter("q", "N")(default_values)
+    return DOTT(q, N)
 
 
 @pytest.fixture

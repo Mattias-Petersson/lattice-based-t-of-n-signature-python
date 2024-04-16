@@ -3,8 +3,6 @@ import cypari2
 from Models.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, CommitOpen
 
-from utils.Polynomial import Polynomial
-
 
 class DOTT(CommitmentScheme):
     """
@@ -12,7 +10,7 @@ class DOTT(CommitmentScheme):
     Takahashi, and Tibouchi.
     """
 
-    def __init__(self):
+    def __init__(self, q: int, N: int):
         def make_B() -> int:
             """
             Bound B for verification. Needs to be large enough to accomodate
@@ -23,22 +21,14 @@ class DOTT(CommitmentScheme):
             Theta(N^2 * log^3(N)). This method does the former of the two.
             """
             C = 1 / math.sqrt(2 * math.pi)
-            return int(
+            return math.floor(
                 C
                 * self.s
                 * math.sqrt(self.N)
                 * (math.sqrt(self.l + 2 * self.w) + 1)
             )
 
-        self.N: int = 256
-        self.q: int = 8380417
-        self.polynomial = Polynomial(self.N, self.q)
-        self.cypari = self.polynomial.cypari
-
-        """The l_1 norm is referred to as tau in the Dilithium docs. We choose to
-        call it kappa to be consistent across files."""
-        self.kappa = 49
-
+        super().__init__(q, N, 49)
         self.s = self.N ** (3 / 2) * math.log2(self.N)
         self.s_bar = self.N
         self.k, self.l = 6, 5
@@ -57,28 +47,25 @@ class DOTT(CommitmentScheme):
         """
         A = self.polynomial.uniform_array(n=shape)
         A[0][0] = self.polynomial.challenge(self.kappa)
-        A[1][0], A[1][1] = self.cypari.Pol("0"), self.cypari.Pol("1")
+        A[1][0], A[1][1] = 0, 1
         return A
-
-    def __make_r(self, n: int, sigma, bound: int) -> cypari2.gen.Gen:
-        return self.polynomial.guassian_bounded_array(n, sigma, bound)
 
     def __Ar_with_msg(
         self, c: Commit
     ) -> tuple[cypari2.gen.Gen, cypari2.gen.Gen]:
         Ar = self.cypari.Mat(self.Â * self.cypari.mattranspose(c.r))
-        zeroes = self.cypari.matconcat(
-            self.cypari.mattranspose([self.cypari.Pol("0"), c.m])
-        )
+        zeroes = self.cypari.matconcat(self.cypari.mattranspose([0, c.m]))
         return Ar, zeroes
 
     def make_commit(self) -> Commit:
         m = self.polynomial.uniform_element()
-        r = self.__make_r(self.l + 2 * self.w, self.s, self.B)
+        r = self.r_commit()
         return Commit(m, r)
 
     def r_commit(self):
-        return [self.polynomial.challenge(self.kappa) for _ in range(self.k)]
+        return self.polynomial.guassian_bounded_array(
+            self.l + 2 * self.w, self.s, self.B
+        )
 
     def commit(self, c: Commit):
         """

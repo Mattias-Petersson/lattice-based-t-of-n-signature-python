@@ -11,7 +11,7 @@ class CommitmentScheme(ABC):
     def __init__(self, q: int, N: int, kappa: int):
         self.q = q
         self.N = N
-        self.polynomial = Polynomial(self.q, self.N)
+        self.polynomial = Polynomial(self.N, self.q)
         self.cypari = self.polynomial.cypari
 
         """Kappa is the maximum l_1 norm to ensure small challenges. Sometimes
