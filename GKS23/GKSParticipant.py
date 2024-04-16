@@ -1,5 +1,5 @@
-from BDLOP16.CommitmentScheme import CommitmentScheme
 from BGV122.BGVParticipant import BGVParticipant
+from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import Commit, Ctx, GksPk, Signature, poly
 from utils.Polynomial import Polynomial

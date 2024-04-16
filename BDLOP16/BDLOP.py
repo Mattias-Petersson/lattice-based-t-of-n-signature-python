@@ -1,5 +1,5 @@
 import math
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import (
     Commit,
     ProofOfOpen,
@@ -11,7 +11,7 @@ import cypari2
 
 
 class BDLOP:
-    def __init__(self, comm_scheme: CommitmentScheme):
+    def __init__(self, comm_scheme: BDLOPCommScheme):
         self.comm_scheme = comm_scheme
         self.polynomial = comm_scheme.polynomial
         self.cypari = self.polynomial.cypari
@@ -233,18 +233,18 @@ class BDLOP:
         return self.__check_equivalences(lhs, rhs)
 
 
-def commit(C: CommitmentScheme, m):
+def commit(C: BDLOPCommScheme, m):
     r = C.r_commit()
     c = C.commit(Commit(m, r))
     return c, r
 
 
-def commit_with_r(C: CommitmentScheme, m, r):
+def commit_with_r(C: BDLOPCommScheme, m, r):
     c = C.commit(Commit(m, r))
     return c
 
 
-def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
+def proof_of_open(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_opening(r)
@@ -252,7 +252,7 @@ def proof_of_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
     return open
 
 
-def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
+def proof_of_specific_open(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     c, r = commit(comm_scheme, m)
     proof = ZK.proof_of_specific_opening(r)
@@ -260,7 +260,7 @@ def proof_of_specific_open(comm_scheme: CommitmentScheme, ZK: BDLOP):
     return open
 
 
-def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP):
+def linear_relation(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
     m = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g = [comm_scheme.get_challenge() for _ in range(2)]
 
@@ -273,7 +273,7 @@ def linear_relation(comm_scheme: CommitmentScheme, ZK: BDLOP):
     return open
 
 
-def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOP):
+def proof_of_sum(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
     m1 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     m2 = ZK.polynomial.uniform_array(ZK.comm_scheme.l)
     g1, g2, g3 = [comm_scheme.get_challenge() for _ in range(3)]
@@ -294,7 +294,7 @@ def proof_of_sum(comm_scheme: CommitmentScheme, ZK: BDLOP):
 
 
 def main():
-    comm_scheme = CommitmentScheme()
+    comm_scheme = BDLOPCommScheme()
     ZK = BDLOP(comm_scheme)
     proofs = dict()
     clock = time.time()

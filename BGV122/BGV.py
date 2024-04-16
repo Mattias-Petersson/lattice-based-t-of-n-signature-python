@@ -1,5 +1,6 @@
 from typing import Iterable
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
 from type.classes import TN, BGVValues, Ctx, NameData, poly
@@ -52,7 +53,7 @@ class BGV(Controller):
             )
         assert tn is not None
         t, n = tn
-        comm = CommitmentScheme(q=self.q, N=self.N)
+        comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare((t, n), self.q)
         part = tuple(
             BGVParticipant(comm, secrets, self.q, self.p, self.N, i + 1)

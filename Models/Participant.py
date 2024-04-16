@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import NameData
 

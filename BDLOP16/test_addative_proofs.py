@@ -1,12 +1,12 @@
 from BDLOP16.BDLOP import BDLOP
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BDLOP16.RelationProofs import RelationProver
 from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit
 from utils.Polynomial import Polynomial
 
 PH = Polynomial()
-c = CommitmentScheme()
+c = BDLOPCommScheme()
 zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)

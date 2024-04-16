@@ -1,5 +1,5 @@
 import numpy as np
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BDLOP16.RelationProofs import RelationProver
 from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, CommitOpen, ProofOfOpenLinear
@@ -16,7 +16,7 @@ class BGVParticipant:
         q,
         N,
         i,
-        comm_scheme: CommitmentScheme,
+        comm_scheme: BDLOPCommScheme,
         RelationProofs: RelationProver,
         SSS: SecretShare,
         cypari,

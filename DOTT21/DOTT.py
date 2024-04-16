@@ -1,11 +1,12 @@
 import math
 import cypari2
+from Models.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, CommitOpen
 
 from utils.Polynomial import Polynomial
 
 
-class DOTT:
+class DOTT(CommitmentScheme):
     """
     An implemention of a trapdoor commitment scheme by Damgård, Orlandi,
     Takahashi, and Tibouchi.
@@ -76,7 +77,10 @@ class DOTT:
         r = self.__make_r(self.l + 2 * self.w, self.s, self.B)
         return Commit(m, r)
 
-    def com(self, c: Commit):
+    def r_commit(self):
+        return [self.polynomial.challenge(self.kappa) for _ in range(self.k)]
+
+    def commit(self, c: Commit):
         """
         Commits to an x in R_q and returns Â * r + [0 x]~
 

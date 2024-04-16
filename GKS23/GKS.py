@@ -1,5 +1,5 @@
 from typing import Iterable
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
@@ -23,7 +23,7 @@ class GKS(Controller):
         self.N = N
         self.t = t
         self.n = n
-        self.comm_scheme = CommitmentScheme(q=self.q, N=self.N)
+        self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari

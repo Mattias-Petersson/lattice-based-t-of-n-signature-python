@@ -1,12 +1,12 @@
 from BDLOP16.BDLOP import BDLOP
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import Commit, ProofOfOpenLinear
 from SecretSharing.SecretShare import SecretShare
 
 
 class RelationProver:
     def __init__(
-        self, ZK: BDLOP, comm_scheme: CommitmentScheme, SSS: SecretShare
+        self, ZK: BDLOP, comm_scheme: BDLOPCommScheme, SSS: SecretShare
     ):
         self.ZK = ZK
         self.comm_scheme = comm_scheme

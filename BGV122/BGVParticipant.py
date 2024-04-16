@@ -1,7 +1,7 @@
 from typing import Iterable
 
 import numpy as np
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import Commit, CommitOpen, Ctx, BgvPk, SecretSharePoly, BgvSk

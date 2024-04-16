@@ -1,6 +1,6 @@
 import numpy as np
 from BDLOP16.BDLOP import BDLOP
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BDLOP16.RelationProofs import RelationProver
 from BGV12.BGVParticipant import BGVParticipant
 from SecretSharing.SecretShare import SecretShare
@@ -201,7 +201,7 @@ class BGV:
         return bool(m + m2 == ptx)
 
 
-c = CommitmentScheme()
+c = BDLOPCommScheme()
 zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)

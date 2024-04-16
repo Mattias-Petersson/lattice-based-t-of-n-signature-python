@@ -1,6 +1,6 @@
 import pytest
 
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import Commit
 from utils.Polynomial import Polynomial
 
@@ -9,7 +9,7 @@ pytest.fixture(scope="session")
 
 @pytest.fixture
 def comm_scheme():
-    return CommitmentScheme()
+    return BDLOPCommScheme()
 
 
 @pytest.fixture

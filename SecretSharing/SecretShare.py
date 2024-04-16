@@ -1,4 +1,4 @@
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import TN
 from utils.Polynomial import Polynomial
 import cypari2

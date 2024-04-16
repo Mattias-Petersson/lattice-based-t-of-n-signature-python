@@ -1,12 +1,12 @@
 import math
 import time
 import cypari2
-import numpy as np
+from Models.CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
 from type.classes import Commit, CommitOpen
 
 
-class CommitmentScheme:
+class BDLOPCommScheme(CommitmentScheme):
     def __init__(
         self,
         l: int = 1,
@@ -104,7 +104,7 @@ class CommitmentScheme:
 
 if __name__ == "__main__":
     start = time.time()
-    comm = CommitmentScheme()
+    comm = BDLOPCommScheme()
     open = dict()
     for i in range(100):
         commit: Commit = Commit(

@@ -1,6 +1,6 @@
 import pytest
 
-from BDLOP16.CommitmentScheme import CommitmentScheme
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import CommitOpen
 
 
@@ -17,7 +17,7 @@ def commit_open_honest(commit, honest_f) -> CommitOpen:
 
 def test_faulty_kappa():
     with pytest.raises(ValueError) as excinfo:
-        CommitmentScheme(N=50, kappa=51)
+        BDLOPCommScheme(N=50, kappa=51)
     assert (
         str(excinfo.value)
         == "Kappa needs to be smaller than N to make a valid challenge."
