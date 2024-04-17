@@ -31,7 +31,7 @@ class BGV(Controller):
         ) = self.__getValues(values, tn)
 
         self.polynomial = self.comm_scheme.polynomial
-        self.message_space = Polynomial(self.N, self.p)
+        self.message_space = Polynomial(self.counter, self.N, self.p)
         self.cypari = self.comm_scheme.cypari
 
         super().__init__(self.participants)

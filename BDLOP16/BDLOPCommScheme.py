@@ -46,7 +46,7 @@ class BDLOPCommScheme(CommitmentScheme):
         self.sigma = math.floor(
             11 * self.kappa * 1 * math.sqrt(self.k * self.N)
         )
-        self.polynomial = Polynomial(self.N, self.q)
+        self.polynomial = Polynomial(self.counter, self.N, self.q)
         self.cypari = self.polynomial.cypari
         self.A1 = __make_A1()
         self.A2 = __make_A2()

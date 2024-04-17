@@ -1,3 +1,4 @@
+from GKS23.MultiCounter import MultiCounter
 import cypari2
 from numpy.random import Generator, PCG64
 import math
@@ -17,6 +18,7 @@ class Polynomial:
 
     def __init__(
         self,
+        counter: MultiCounter,
         N: int = 1024,
         q: int = 2**32 - 527,
     ):
@@ -29,6 +31,7 @@ class Polynomial:
         self.gen = Generator(PCG64())
         self.N = N
         self.q = q
+        self.counter = counter
 
     def uniform_element(self, bound: int = 0) -> poly:
         """
@@ -60,6 +63,7 @@ class Polynomial:
         Returns:
         The polynomial that is congruent to the argument for the ring.
         """
+        self.counter.inc_mod(2)
         return (
             p
             * self.cypari.Mod(1, self.q)

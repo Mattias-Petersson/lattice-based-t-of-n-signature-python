@@ -135,6 +135,7 @@ class BGVParticipant(Participant):
         q_half = (self.q - 1) / 2
         q_half_p = q_half % self.p
         helper_array = round_and_pol(np.ones(self.N) * q_half)
+        self.counter.inc_mod()
         ptx = self.cypari.liftall(
             ctx.v - sum(d) + helper_array
         ) * self.cypari.Mod(1, self.p)

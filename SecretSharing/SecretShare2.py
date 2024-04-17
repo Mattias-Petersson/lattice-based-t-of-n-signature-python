@@ -1,4 +1,5 @@
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from GKS23.MultiCounter import MultiCounter
 from type.classes import TN, SecretSharePoly, poly
 from utils.Polynomial import Polynomial
 import numpy as np
@@ -15,12 +16,13 @@ class SecretShare:
 
     """
 
-    def __init__(self, tn: TN, q: int):
+    def __init__(self, tn: TN, q: int, counter: MultiCounter):
         self.t, self.n = tn
         if self.t > self.n:
             raise ValueError("Got t larger than n in secret share.")
         self.q = q
-        self.polynomial = Polynomial(self.t, self.q)
+        self.counter = counter
+        self.polynomial = Polynomial(self.counter, self.t, self.q)
         self.cypari = self.polynomial.cypari
 
     def __generatePoly(self, s: poly) -> poly:
@@ -34,6 +36,7 @@ class SecretShare:
             for i in range(1, self.t)
         ]
         poly = "".join(poly_arr) + str(s)
+        self.counter.inc_mod()
         return self.cypari.Pol(poly) * self.cypari.Mod(1, self.q)
 
     def __share(self, s):
@@ -71,4 +74,5 @@ class SecretShare:
         rec_arr = [self.polynomial.pol_to_arr(i.p) for i in r]
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.__reconstruct(i, contributors) for i in polys]
+        self.counter.inc_mod()
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)
