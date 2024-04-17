@@ -6,13 +6,13 @@ from type.classes import CommitOpen
 from Models.values import default_values
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def dott():
     q, N = itemgetter("q", "N")(default_values)
     return DOTT(q, N)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def commit(dott):
     return dott.make_commit()
 
