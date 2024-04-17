@@ -2,6 +2,7 @@ from typing import Iterable
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
+from GKS23.MultiCounter import MultiCounter
 from Models.Controller import Controller
 from Models.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
@@ -28,11 +29,13 @@ class GKS(Controller):
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare((self.t, self.n), self.q)
+        self.counter = MultiCounter()
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
                 self.secret_share,
                 self.message_space,
+                self.counter,
                 self.q,
                 self.p,
                 self.N,
@@ -115,3 +118,4 @@ if __name__ == "__main__":
     part = participants[0]
     signatures = gks.sign(m_sign, participants[:2])
     print(gks.vrfy(m_sign, participants[0], signatures[0]))
+    print(gks.counter.q_mult)

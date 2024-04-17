@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import NameData
@@ -13,6 +14,7 @@ class Participant(ABC):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        counter: MultiCounter,
         q: int,
         p: int,
         N: int,
@@ -26,6 +28,7 @@ class Participant(ABC):
         self.q = q
         self.p = p
         self.N = N
+        self.counter = counter
         # what x that is associated with this participant's secret shares.
         self.x = x
         self.comm_scheme = comm_scheme

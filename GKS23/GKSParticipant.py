@@ -1,4 +1,5 @@
 from BGV122.BGVParticipant import BGVParticipant
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import Commit, Ctx, GksPk, Signature, poly
@@ -11,12 +12,13 @@ class GKSParticipant(BGVParticipant):
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         message_space: Polynomial,
+        counter: MultiCounter,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(comm_scheme, secret_share, q, p, N, x)
+        super().__init__(comm_scheme, secret_share, counter, q, p, N, x)
         self.from_u = dict()
         self.message_space = message_space
         self.a = self.polynomial.uniform_element()
@@ -26,6 +28,7 @@ class GKSParticipant(BGVParticipant):
         self.from_u[attr] = data
 
     def __cross_prod(self, vec_1, vec_2):
+        self.counter.inc_q(len(vec_1))
         return sum([v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True)])
 
     def __make_ctx_s(self) -> list[Ctx]:
@@ -74,6 +77,7 @@ class GKSParticipant(BGVParticipant):
             sum([u.data for u in self.from_u["w"]])
         )
         self.c: poly = self.hash((self.all_w, self.pk, mu))
+        self.counter.inc_q(2 * len(self.sum_ctx_s))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
         self.ctx_z: list[Ctx] = [
@@ -93,6 +97,7 @@ class GKSParticipant(BGVParticipant):
 
     def verify_signature(self, mu, signature: Signature):
         az = self.__cross_prod(self.a_vector, signature.z)
+        self.counter.inc_q()
         cy = signature.c * self.pk.y
         w_star = self.cypari.liftall(az - cy)
         hashed = self.hash((w_star, self.pk, mu))

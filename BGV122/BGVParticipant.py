@@ -1,6 +1,7 @@
 from typing import Iterable
 
 import numpy as np
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
@@ -13,12 +14,13 @@ class BGVParticipant(Participant):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        counter: MultiCounter,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(comm_scheme, secret_share, q, p, N, x)
+        super().__init__(comm_scheme, secret_share, counter, q, p, N, x)
         self.a = self.polynomial.uniform_element()
         self.cypari = self.polynomial.cypari
         self.a_hash = self.hash(self.a)
@@ -32,7 +34,7 @@ class BGVParticipant(Participant):
 
         self.com_e = self.__commit(self.e)
         self.c_e = self.comm_scheme.commit(self.com_e)
-
+        self.counter.inc_q(1)
         self.b = self.sum_a * self.s + self.p * self.e
         self.b_hash = self.hash(self.b)
 
@@ -47,6 +49,7 @@ class BGVParticipant(Participant):
         def make_b(s, e):
             if s.x != e.x:
                 raise ValueError()
+            self.counter.inc_q(1)
             return SecretSharePoly(s.x, self.sum_a * s.p + self.p * e.p)
 
         add_val = lambda name, val: vals.get(name, []) + [val]
@@ -116,11 +119,13 @@ class BGVParticipant(Participant):
     def enc(self, m) -> Ctx:
         r, e_prime, e_bis = self.polynomial.gaussian_array(3, 1)
         mprime = self.cypari.liftall(m)
+        self.counter.inc_q(2)
         u = self.sum_a * r + self.p * e_prime
         v = self.sum_b * r + self.p * e_bis + mprime
         return Ctx(u, v)
 
     def t_dec(self, ctx: Ctx, x: int):
+        self.counter.inc_q(1)
         m = self.sk.commit.m * ctx.u * x
         e = self.polynomial.uniform_element(2)
         return m + self.p * e
