@@ -120,3 +120,4 @@ if __name__ == "__main__":
     print(gks.vrfy(m_sign, participants[0], signatures[0]))
     print(gks.counter.mult)
     print(gks.counter.mod)
+    print(gks.counter.add)

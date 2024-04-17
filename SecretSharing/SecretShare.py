@@ -1,4 +1,5 @@
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from GKS23.MultiCounter import MultiCounter
 from type.classes import TN
 from utils.Polynomial import Polynomial
 import cypari2

@@ -29,15 +29,18 @@ class GKSParticipant(BGVParticipant):
 
     def __cross_prod(self, vec_1, vec_2):
         self.counter.inc_mult(len(vec_1))
+        self.counter.inc_add(len(vec_1))
         return sum([v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True)])
 
     def __make_ctx_s(self) -> list[Ctx]:
         """
         Ctx_s is the sum of all individual ciphertexts ctx_s_j.
         """
+        self.counter.inc_add(4)
         ctx0 = Ctx(0, 0) + self.ctx_s[0]
         ctx1 = Ctx(0, 0) + self.ctx_s[1]
         for d in self.others["ctx_s"]:
+            self.counter.inc_add(4)
             ctx0 += d.data[0]
             ctx1 += d.data[1]
         return [ctx0, ctx1]
@@ -45,11 +48,13 @@ class GKSParticipant(BGVParticipant):
     def __sum_ctx_r(self) -> list[Ctx]:
         ctx1, ctx2 = Ctx(0, 0), Ctx(0, 0)
         for d in self.from_u["ctx_r"]:
+            self.counter.inc_add(4)
             ctx1 += d.data[0]
             ctx2 += d.data[1]
         return [ctx1, ctx2]
 
     def KGen_step_2(self):
+        self.counter.inc_add(len(self.others["a"]) + 1)
         sum_a = self.a + sum([i.data for i in self.others["a"]])
         self.a_vector = [sum_a, 1]
 
@@ -60,6 +65,7 @@ class GKSParticipant(BGVParticipant):
         self.ctx_s = [self.enc(s) for s in self.s]
 
     def KGen_step_4(self):
+        self.counter.inc_add(len(self.others["y"]) + 1)
         sum_y = self.y + sum([i.data for i in self.others["y"]])
         self.sum_ctx_s: list[Ctx] = self.__make_ctx_s()
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
@@ -73,6 +79,7 @@ class GKSParticipant(BGVParticipant):
         self.ctx_r = [self.enc(i) for i in r]
 
     def sign_2(self, mu, x: int):
+        self.counter.inc_add(len(self.from_u["w"]))
         self.all_w = self.cypari.liftall(
             sum([u.data for u in self.from_u["w"]])
         )
@@ -80,6 +87,7 @@ class GKSParticipant(BGVParticipant):
         self.counter.inc_mult(2 * len(self.sum_ctx_s))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
+        self.counter.inc_add(2 * len(sum_ctx_r))
         self.ctx_z: list[Ctx] = [
             c + r for c, r in zip(c_ctx, sum_ctx_r, strict=True)
         ]
@@ -92,6 +100,7 @@ class GKSParticipant(BGVParticipant):
             d1.append(d.data[1])
 
         z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
+        self.counter.inc_add(len(self.from_u["com_w"]))
         rho = sum([com.data.r for com in self.from_u["com_w"]])
         return Signature(self.c, z, rho)
 
@@ -99,6 +108,7 @@ class GKSParticipant(BGVParticipant):
         az = self.__cross_prod(self.a_vector, signature.z)
         self.counter.inc_mult()
         cy = signature.c * self.pk.y
+        self.counter.inc_add()
         w_star = self.cypari.liftall(az - cy)
         hashed = self.hash((w_star, self.pk, mu))
         return hashed == self.c
