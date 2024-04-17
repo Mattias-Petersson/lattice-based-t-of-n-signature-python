@@ -34,7 +34,7 @@ class BGVParticipant(Participant):
 
         self.com_e = self.__commit(self.e)
         self.c_e = self.comm_scheme.commit(self.com_e)
-        self.counter.inc_q(1)
+        self.counter.inc_mult()
         self.b = self.sum_a * self.s + self.p * self.e
         self.b_hash = self.hash(self.b)
 
@@ -49,7 +49,7 @@ class BGVParticipant(Participant):
         def make_b(s, e):
             if s.x != e.x:
                 raise ValueError()
-            self.counter.inc_q(1)
+            self.counter.inc_mult()
             return SecretSharePoly(s.x, self.sum_a * s.p + self.p * e.p)
 
         add_val = lambda name, val: vals.get(name, []) + [val]
@@ -119,13 +119,13 @@ class BGVParticipant(Participant):
     def enc(self, m) -> Ctx:
         r, e_prime, e_bis = self.polynomial.gaussian_array(3, 1)
         mprime = self.cypari.liftall(m)
-        self.counter.inc_q(2)
+        self.counter.inc_mult(2)
         u = self.sum_a * r + self.p * e_prime
         v = self.sum_b * r + self.p * e_bis + mprime
         return Ctx(u, v)
 
     def t_dec(self, ctx: Ctx, x: int):
-        self.counter.inc_q(1)
+        self.counter.inc_mult()
         m = self.sk.commit.m * ctx.u * x
         e = self.polynomial.uniform_element(2)
         return m + self.p * e

@@ -1,5 +1,6 @@
 import math
 import time
+from GKS23.MultiCounter import MultiCounter
 import cypari2
 from Models.CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
@@ -9,6 +10,7 @@ from type.classes import Commit, CommitOpen
 class BDLOPCommScheme(CommitmentScheme):
     def __init__(
         self,
+        counter: MultiCounter,
         l: int = 1,
         k: int = 3,
         n: int = 1,
@@ -34,6 +36,7 @@ class BDLOPCommScheme(CommitmentScheme):
         self.q = q
         self.n = n
         self.N = N
+        self.counter = counter
         self.sbeta = sbeta
         self.kappa = kappa
         if self.kappa > self.N:
@@ -58,6 +61,8 @@ class BDLOPCommScheme(CommitmentScheme):
         With r bounded by S_b = 1 we do not need to reduce, but r_open allows
         for a less strict r.
         """
+
+        self.counter.inc_mult((self.l + self.n) * self.k)
         Ar = self.cypari.Mat(self.A1A2 * self.cypari.mattranspose(c.r))
         zeroes = self.polynomial.uniform_array(self.n, 1)
         zeroes_message = self.cypari.matconcat(
@@ -104,7 +109,7 @@ class BDLOPCommScheme(CommitmentScheme):
 
 if __name__ == "__main__":
     start = time.time()
-    comm = BDLOPCommScheme()
+    comm = BDLOPCommScheme(MultiCounter())
     open = dict()
     for i in range(100):
         commit: Commit = Commit(

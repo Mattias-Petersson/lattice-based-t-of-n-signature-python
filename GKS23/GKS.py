@@ -24,12 +24,12 @@ class GKS(Controller):
         self.N = N
         self.t = t
         self.n = n
-        self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
+        self.counter = MultiCounter()
+        self.comm_scheme = BDLOPCommScheme(self.counter, q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare((self.t, self.n), self.q)
-        self.counter = MultiCounter()
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
@@ -116,6 +116,6 @@ if __name__ == "__main__":
     participants = gks.KGen()
     m_sign = gks.BGV.get_message()
     part = participants[0]
-    signatures = gks.sign(m_sign, participants[:2])
+    signatures = gks.sign(m_sign, participants[: gks.t])
     print(gks.vrfy(m_sign, participants[0], signatures[0]))
-    print(gks.counter.q_mult)
+    print(gks.counter.mult)

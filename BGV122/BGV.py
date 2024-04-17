@@ -1,5 +1,6 @@
 from typing import Iterable
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
@@ -20,6 +21,7 @@ class BGV(Controller):
         self.q = q
         self.N = N
         self.p = p
+        self.counter = MultiCounter()
         (
             self.comm_scheme,
             self.secret_share,
@@ -56,7 +58,9 @@ class BGV(Controller):
         comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare((t, n), self.q)
         part = tuple(
-            BGVParticipant(comm, secrets, self.q, self.p, self.N, i + 1)
+            BGVParticipant(
+                comm, secrets, self.counter, self.q, self.p, self.N, i + 1
+            )
             for i in range(n)
         )
         return comm, secrets, part, t, n

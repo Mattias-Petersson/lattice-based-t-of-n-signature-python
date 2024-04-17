@@ -1,10 +1,10 @@
 class MultiCounter:
     def __init__(self):
-        self.q_mult = 0
-        self.p_mult = 0
+        self.mult = 0
+        self.mod = 0
 
-    def inc_q(self, val=1):
-        self.q_mult += val
+    def inc_mult(self, val=1):
+        self.mult += val
 
-    def inc_p(self, val=1):
-        self.p_mult += val
+    def inc_mod(self, val=1):
+        self.mod += val
