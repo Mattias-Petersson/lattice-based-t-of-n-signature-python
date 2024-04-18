@@ -12,14 +12,12 @@ class GKSParticipant(BGVParticipant):
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         message_space: Polynomial,
-        message_comm_scheme: CommitmentScheme,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
         super().__init__(comm_scheme, secret_share, q, p, N, x)
-        self.comm_scheme = message_comm_scheme
         self.from_u = dict()
         self.message_space = message_space
         self.a = self.polynomial.uniform_element()
@@ -64,16 +62,19 @@ class GKSParticipant(BGVParticipant):
         self.sum_ctx_s: list[Ctx] = self.__make_ctx_s()
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
-    def sign_1(self):
+    def sign_1(self, mu):
         r = self.message_space.gaussian_array(2, 4)
-        w = self.__cross_prod(self.a_vector, r)
-        self.com_w = Commit(w, self.comm_scheme.r_commit())
-        self.c_w = self.comm_scheme.commit(self.com_w)
+        ck = self.hash((self.pk, mu))
+        self.w = self.__cross_prod(self.a_vector, r)
+        self.com_w = Commit(self.w, self.comm_scheme.r_commit())
+        [self.c_w] = self.comm_scheme.commit(self.com_w)
         self.ctx_r = [self.enc(i) for i in r]
 
     def sign_2(self, mu, x: int):
-        self.all_com = sum([u.data for u in self.from_u["c_w"]])
-        self.c: poly = self.hash((self.all_com, self.pk, mu))
+        self.all_w = self.cypari.liftall(
+            sum([u.data for u in self.from_u["w"]])
+        )
+        self.c: poly = self.hash((self.all_w, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
         self.ctx_z: list[Ctx] = [
@@ -81,36 +82,19 @@ class GKSParticipant(BGVParticipant):
         ]
         self.ds = [self.t_dec(z, x) for z in self.ctx_z]
 
-    def __validate_opens(self):
-        # A participant does not need to verify their own data.
-        filter_own = lambda iter: filter(lambda x: x.name != self.name, iter)
-        c_w = filter_own(self.from_u["c_w"])
-        com_w = filter_own(self.from_u["com_w"])
-        for c, com in zip(c_w, com_w):
-
-            if not c.name == com.name:
-                raise ValueError(
-                    "Open commit check for open failed due to identity mismatch."
-                )
-            if not self.comm_scheme.open(CommitOpen(c.data, com.data)):
-                raise ValueError(
-                    f"Open check failed, did not open successfully for user {c.name} by {self.name}"
-                )
-
     def generate_signature(self) -> Signature:
         d0, d1 = [], []
         for d in self.from_u["ds"]:
             d0.append(d.data[0])
             d1.append(d.data[1])
 
-        self.__validate_opens()
         z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
-        self.rho = sum([com.data.r for com in self.from_u["com_w"]])
-        return Signature(self.c, z, self.rho)
+        rho = sum([com.data.r for com in self.from_u["com_w"]])
+        return Signature(self.c, z, rho)
 
     def verify_signature(self, mu, signature: Signature):
         az = self.__cross_prod(self.a_vector, signature.z)
         cy = signature.c * self.pk.y
-        com_temp = self.comm_scheme.commit(Commit(az - cy, self.rho))
-        hashed = self.hash((com_temp, self.pk, mu))
+        w_star = self.cypari.liftall(az - cy)
+        hashed = self.hash((w_star, self.pk, mu))
         return hashed == self.c

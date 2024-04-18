@@ -25,7 +25,6 @@ class GKS(Controller):
         self.t = t
         self.n = n
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
-        self.message_comm_scheme = BDLOPCommScheme(q=self.p, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
@@ -35,7 +34,6 @@ class GKS(Controller):
                 self.comm_scheme,
                 self.secret_share,
                 self.message_space,
-                self.message_comm_scheme,
                 self.q,
                 self.p,
                 self.N,
@@ -88,11 +86,11 @@ class GKS(Controller):
         self.__KGen_step_3()
         return self.__finalize()
 
-    def __sign_1(self, U: Iterable[GKSParticipant]):
+    def __sign_1(self, mu: poly, U: Iterable[GKSParticipant]):
         for p in U:
-            p.sign_1()
+            p.sign_1(mu)
         self.__send_to_subset("ctx_r", U)
-        self.__send_to_subset("c_w", U)
+        self.__send_to_subset("w", U)
 
     def __sign_2(self, mu: poly, U: Iterable[GKSParticipant], lagrange_x):
         for p, x in zip(U, lagrange_x):
@@ -102,7 +100,7 @@ class GKS(Controller):
 
     def sign(self, mu: poly, U: Iterable[GKSParticipant]) -> list[Signature]:
         lagrange_x = self.BGV.participant_lagrange(U)
-        self.__sign_1(U)
+        self.__sign_1(mu, U)
         self.__sign_2(mu, U, lagrange_x)
         return [p.generate_signature() for p in U]
 
@@ -114,11 +112,7 @@ if __name__ == "__main__":
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
-    results = dict()
-    for _ in range(10):
-        m_sign = gks.BGV.get_message()
-        part = participants[0]
-        signatures = gks.sign(m_sign, participants[: gks.t])
-        res = gks.vrfy(m_sign, part, signatures[0])
-        results[res] = results.get(res, 0) + 1
-    print(results)
+    m_sign = gks.BGV.get_message()
+    part = participants[0]
+    signatures = gks.sign(m_sign, participants[:2])
+    print(gks.vrfy(m_sign, participants[0], signatures[0]))
