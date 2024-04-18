@@ -112,7 +112,10 @@ if __name__ == "__main__":
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
-    m_sign = gks.BGV.get_message()
-    part = participants[0]
-    signatures = gks.sign(m_sign, participants[:2])
-    print(gks.vrfy(m_sign, participants[0], signatures[0]))
+    for _ in range(10):
+        m_sign = gks.BGV.get_message()
+        part = participants[0]
+        signatures = gks.sign(m_sign, participants[:2])
+        res = gks.vrfy(m_sign, participants[0], signatures[0])
+        results[res] = results.get(res, 0) + 1
+    print(results)

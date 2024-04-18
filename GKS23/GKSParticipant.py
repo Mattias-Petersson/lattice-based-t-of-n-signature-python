@@ -63,7 +63,7 @@ class GKSParticipant(BGVParticipant):
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self, mu):
-        r = self.message_space.gaussian_array(2, 4)
+        r = self.message_space.gaussian_array(2, 2**13)
         ck = self.hash((self.pk, mu))
         self.w = self.__cross_prod(self.a_vector, r)
         self.com_w = Commit(self.w, self.comm_scheme.r_commit())
