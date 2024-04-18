@@ -26,6 +26,7 @@ class BGVParticipant(Participant):
         self.a_hash = self.hash(self.a)
 
     def make_b(self):
+        self.counter.inc_add(len(self.others["a"]) + 1)
         self.sum_a = self.a + sum([i.data for i in self.others["a"]])
         self.s, self.e = self.gaussian(1), self.gaussian(1)
 
@@ -35,6 +36,7 @@ class BGVParticipant(Participant):
         self.com_e = self.__commit(self.e)
         self.c_e = self.comm_scheme.commit(self.com_e)
         self.counter.inc_mult()
+        self.counter.inc_add()
         self.b = self.sum_a * self.s + self.p * self.e
         self.b_hash = self.hash(self.b)
 
@@ -50,6 +52,7 @@ class BGVParticipant(Participant):
             if s.x != e.x:
                 raise ValueError()
             self.counter.inc_mult()
+            self.counter.inc_add()
             return SecretSharePoly(s.x, self.sum_a * s.p + self.p * e.p)
 
         add_val = lambda name, val: vals.get(name, []) + [val]
@@ -105,12 +108,15 @@ class BGVParticipant(Participant):
                 )
 
     def generate_final(self):
+        self.counter.inc_add(len(self.others["b"]) + 1)
         self.sum_b = self.b + sum([i.data for i in self.others["b"]])
         new_com = 0
         new_r = 0
         for com in self.others["coms_s_bar"]:
+            self.counter.inc_add(2)
             new_com += com.data.m
             new_r += com.data.r
+        self.counter.inc_add(len(self.others["c_s_bar"]) + 1)
         self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
         self.pk = BgvPk(self.sum_a, self.sum_b, self.c_s_k)
         self.sk = BgvSk(self.x, Commit(new_com, new_r))
@@ -120,6 +126,7 @@ class BGVParticipant(Participant):
         r, e_prime, e_bis = self.polynomial.gaussian_array(3, 1)
         mprime = self.cypari.liftall(m)
         self.counter.inc_mult(2)
+        self.counter.inc_add(3)
         u = self.sum_a * r + self.p * e_prime
         v = self.sum_b * r + self.p * e_bis + mprime
         return Ctx(u, v)
@@ -128,6 +135,7 @@ class BGVParticipant(Participant):
         self.counter.inc_mult()
         m = self.sk.commit.m * ctx.u * x
         e = self.polynomial.uniform_element(2)
+        self.counter.inc_add()
         return m + self.p * e
 
     def comb(self, ctx, d: list):
@@ -136,6 +144,7 @@ class BGVParticipant(Participant):
         q_half_p = q_half % self.p
         helper_array = round_and_pol(np.ones(self.N) * q_half)
         self.counter.inc_mod()
+        self.counter.inc_add(2)
         ptx = self.cypari.liftall(
             ctx.v - sum(d) + helper_array
         ) * self.cypari.Mod(1, self.p)

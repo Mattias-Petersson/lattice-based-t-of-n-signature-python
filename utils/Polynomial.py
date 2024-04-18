@@ -160,6 +160,7 @@ class Polynomial:
         c2 = self.challenge(kappa)
         while c1 == c2:
             c1 = self.challenge(kappa)
+        self.counter.inc_add()
         return c2 - c1
 
     def hash(self, kappa: int, *args) -> cypari2.gen.Gen:

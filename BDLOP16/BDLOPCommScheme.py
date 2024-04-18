@@ -85,12 +85,13 @@ class BDLOPCommScheme(CommitmentScheme):
 
     def commit(self, c: Commit) -> list[cypari2.gen.Gen]:
         Ar, zerox = self.__a_with_message(c)
+        self.counter.inc_add()
         return Ar + zerox
 
     def open(self, open: CommitOpen) -> bool:
         Ar, zerox = self.__a_with_message(open)
         fz = open.f * zerox
-
+        self.counter.inc_add()
         rhs = Ar + fz
         lhs = open.f * open.c
         return lhs == rhs
