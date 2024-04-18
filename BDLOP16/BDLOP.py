@@ -1,5 +1,6 @@
 import math
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from GKS23.MultiCounter import MultiCounter
 from type.classes import (
     Commit,
     ProofOfOpen,
@@ -15,6 +16,7 @@ class BDLOP:
         self.comm_scheme = comm_scheme
         self.polynomial = comm_scheme.polynomial
         self.cypari = self.polynomial.cypari
+        self.counter = comm_scheme.counter
 
     def __verify_z_bound(self, z) -> bool:
         bound = int(4 * self.comm_scheme.sigma * math.sqrt(self.comm_scheme.N))
@@ -27,7 +29,11 @@ class BDLOP:
         return all(self.__verify_z_bound(i.z) for i in args)
 
     def __verify_A1_z(self, proof: ProofOfOpenLinear, d):
+        self.counter.inc_mult(
+            len(self.comm_scheme.A1) * len(self.comm_scheme.A1[0])
+        )
         lhs = self.comm_scheme.A1 * self.cypari.mattranspose(proof.z)
+        self.counter.inc_add()
         rhs = proof.t + d * proof.c[0][0]
         return lhs == rhs
 
@@ -48,9 +54,12 @@ class BDLOP:
         return self.polynomial.hash(self.comm_scheme.kappa, *args)
 
     def __make_lhs(self, A, vector) -> cypari2.gen.Gen:
+        self.counter.inc_mult(len(A) * len(A[0]))
         return A * self.cypari.mattranspose(vector)
 
     def __make_rhs(self, t, d, c) -> cypari2.gen.Gen:
+        self.counter.inc_mult(len(c))
+        self.counter.inc_add(len(t))
         return t + d * c
 
     def __A1_A2(self) -> tuple[cypari2.gen.Gen, cypari2.gen.Gen]:
@@ -88,6 +97,7 @@ class BDLOP:
             return False
         r0 = (self.cypari.Pol("0") for _ in range(3))
         cprime = commit_with_r(self.comm_scheme, m, r0)
+        self.counter.inc_add(2)
         c1 = c1 - cprime[0][0]
         c2 = c2 - cprime[0][1]
         d = self.d_sigma(proof.t1, proof.t2)
@@ -117,12 +127,17 @@ class BDLOP:
         self, r1, r2, g1, g2
     ) -> tuple[ProofOfOpen, ProofOfOpen, cypari2.gen.Gen]:
         y = [self.__make_y() for _ in range(2)]
+
+        self.counter.inc_add(6)
+        self.counter.inc_mult(3 * 6)
         u = self.comm_scheme.A2 * (
             g2 * self.cypari.mattranspose(y[0])
             - g1 * self.cypari.mattranspose(y[1])
         )
         t = tuple(self.__make_lhs(self.comm_scheme.A1, i) for i in y)
         d = self.d_sigma(*t, g1, g2)
+        self.counter.inc_add(len(y))
+        self.counter.inc_mult(len(y))
         z = self.cypari.Vec(y + d * r for y, r in zip(y, (r1, r2)))
         return ProofOfOpen(z[0], t[0]), ProofOfOpen(z[1], t[1]), u
 
@@ -132,6 +147,8 @@ class BDLOP:
         d = self.d_sigma(proof[0].t, proof[1].t, proof[0].g, proof[1].g)
         if not self.__initial_check(*proof, d=d):
             return False
+        self.counter.inc_add(6)
+        self.counter.inc_mult(3 * 6)
         lhs = self.comm_scheme.A2 * (
             proof[1].g * self.cypari.mattranspose(proof[0].z)
             - proof[0].g * self.cypari.mattranspose(proof[1].z)
@@ -294,31 +311,35 @@ def proof_of_sum(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
 
 
 def main():
-    comm_scheme = BDLOPCommScheme()
+    counter = MultiCounter()
+    comm_scheme = BDLOPCommScheme(counter)
     ZK = BDLOP(comm_scheme)
     proofs = dict()
     clock = time.time()
-    for _ in range(100):
+    for _ in range(1):
         open = proof_of_open(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Opening time: ", time.time() - clock)
     clock = time.time()
-    for _ in range(100):
+    for _ in range(1):
         open = proof_of_specific_open(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Specific opening time: ", time.time() - clock)
     clock = time.time()
-    for _ in range(100):
+    for _ in range(1):
         open = linear_relation(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Linear Relation time: ", time.time() - clock)
     clock = time.time()
-    for _ in range(100):
+    for _ in range(1):
         open = proof_of_sum(comm_scheme, ZK)
         proofs[open] = proofs.get(open, 0) + 1
     print("Sum time: ", time.time() - clock)
     clock = time.time()
     print(proofs)
+    print(counter.mult)
+    print(counter.mod)
+    print(counter.add)
 
 
 if __name__ == "__main__":

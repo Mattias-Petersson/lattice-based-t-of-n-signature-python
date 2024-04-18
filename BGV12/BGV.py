@@ -3,6 +3,7 @@ from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BDLOP16.RelationProofs import RelationProver
 from BGV12.BGVParticipant import BGVParticipant
+from GKS23.MultiCounter import MultiCounter
 from SecretSharing.SecretShare import SecretShare
 from utils.Polynomial import Polynomial
 
@@ -201,7 +202,8 @@ class BGV:
         return bool(m + m2 == ptx)
 
 
-c = BDLOPCommScheme()
+counter = MultiCounter()
+c = BDLOPCommScheme(counter)
 zk = BDLOP(c)
 s = SecretShare((2, 4), 2**32 - 527)
 r = RelationProver(zk, c, s)
