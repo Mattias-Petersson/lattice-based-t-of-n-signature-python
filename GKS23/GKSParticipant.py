@@ -1,7 +1,8 @@
+from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, Ctx, GksPk, Signature, poly
+from type.classes import Commit, CommitOpen, Ctx, GksPk, Signature, poly
 from utils.Polynomial import Polynomial
 
 
@@ -11,12 +12,14 @@ class GKSParticipant(BGVParticipant):
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         message_space: Polynomial,
+        message_comm_scheme: CommitmentScheme,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
         super().__init__(comm_scheme, secret_share, q, p, N, x)
+        self.comm_scheme = message_comm_scheme
         self.from_u = dict()
         self.message_space = message_space
         self.a = self.polynomial.uniform_element()
@@ -89,8 +92,7 @@ class GKSParticipant(BGVParticipant):
                 raise ValueError(
                     "Open commit check for open failed due to identity mismatch."
                 )
-            validate_com = self.comm_scheme.commit(com.data)
-            if not validate_com == c.data:
+            if not self.comm_scheme.open(CommitOpen(c.data, com.data)):
                 raise ValueError(
                     f"Open check failed, did not open successfully for user {c.name} by {self.name}"
                 )

@@ -147,6 +147,9 @@ class Polynomial:
             pol += i + f"x^{j}"
         return self.cypari.Pol(pol)
 
+    def challenge_vector(self, n: int, kappa: int):
+        return self.cypari.vector(n, [self.challenge(kappa) for _ in range(n)])
+
     def small_invertible(self, kappa: int) -> poly:
         """
         The difference of two challenges c will have an l_inf norm of at
@@ -168,3 +171,12 @@ class Polynomial:
             h.update(str.encode(str(i)))
         integers_hash: list[int] = [i for i in h.digest()]
         return self.challenge(kappa=kappa, seed=integers_hash)
+
+
+if __name__ == "__main__":
+    poly = Polynomial()
+    temp = poly.uniform_array(3, 2)
+    print("Arr", temp)
+    temp2 = [poly.in_rq(poly.challenge(36)) for _ in range(3)]
+    print("\n\nChallenge", temp2)
+    print(len(temp), len(temp2))

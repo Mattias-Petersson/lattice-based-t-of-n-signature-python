@@ -1,9 +1,10 @@
 from typing import Iterable
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGV import BGV
+from DOTT21.DOTT import DOTT
 from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
-from Models.values import default_values
+from utils.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
 from type.classes import BGVValues, Signature, poly
 from utils.Polynomial import Polynomial
@@ -24,7 +25,7 @@ class GKS(Controller):
         self.t = t
         self.n = n
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
-        # self.comm_scheme = DOTT(self.q, self.N)
+        self.message_comm_scheme = BDLOPCommScheme(q=self.p, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
@@ -34,6 +35,7 @@ class GKS(Controller):
                 self.comm_scheme,
                 self.secret_share,
                 self.message_space,
+                self.message_comm_scheme,
                 self.q,
                 self.p,
                 self.N,
@@ -113,7 +115,7 @@ if __name__ == "__main__":
     results = dict()
     participants = gks.KGen()
     results = dict()
-    for _ in range(1):
+    for _ in range(10):
         m_sign = gks.BGV.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[: gks.t])

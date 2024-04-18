@@ -1,7 +1,7 @@
 import pytest
 
 from GKS23.GKS import GKS
-from Models.values import default_values
+from utils.values import default_values
 from type.classes import Ctx, GksPk
 
 
