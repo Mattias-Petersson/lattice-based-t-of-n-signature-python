@@ -25,7 +25,7 @@ class BGVParticipant(Participant):
 
     def make_b(self):
         self.sum_a = self.a + sum([i.data for i in self.others["a"]])
-        self.s, self.e = self.gaussian(1), self.gaussian(1)
+        self.s, self.e = self.ternary(), self.ternary()
 
         self.com_s = self.__commit(self.s)
         self.c_s = self.comm_scheme.commit(self.com_s)

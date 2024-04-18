@@ -32,7 +32,8 @@ class Participant(ABC):
         self.secret_share = secret_share
         self.polynomial = self.comm_scheme.polynomial
         self.hash = lambda x: self.polynomial.hash(self.comm_scheme.kappa, x)
-        self.gaussian = lambda n: self.polynomial.gaussian_array(n=n, sigma=4)
+        # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.ternary = lambda: self.polynomial.challenge(39)
         self.others = dict()
 
     def share_attr(self, attr: str):

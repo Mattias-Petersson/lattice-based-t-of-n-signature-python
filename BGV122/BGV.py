@@ -12,8 +12,8 @@ class BGV(Controller):
     def __init__(
         self,
         values: BGVValues | None = None,
-        p: int = 2029,
-        q: int = 2**32 - 527,
+        p: int = 50021,
+        q: int = 2**25 - 91,
         N: int = 1024,
         tn: TN | None = None,
     ):
