@@ -12,8 +12,8 @@ class BGV(Controller):
     def __init__(
         self,
         values: BGVValues | None = None,
-        p: int = 50021,
-        q: int = 2**25 - 91,
+        p: int = 34554371,
+        q: int = 3484078194284213,
         N: int = 1024,
         tn: TN | None = None,
     ):
@@ -56,7 +56,9 @@ class BGV(Controller):
         comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare((t, n), self.q)
         part = tuple(
-            BGVParticipant(comm, secrets, self.q, self.p, self.N, i + 1)
+            BGVParticipant(
+                comm, comm, secrets, self.q, self.p, 1, self.N, i + 1
+            )
             for i in range(n)
         )
         return comm, secrets, part, t, n

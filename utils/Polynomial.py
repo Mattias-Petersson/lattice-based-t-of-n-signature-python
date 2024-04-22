@@ -128,7 +128,7 @@ class Polynomial:
         Convert a polynomial to an array of integers.
         """
         pariVec = self.cypari.Vec(self.cypari.liftall(pol))
-        return gen_to_python(pariVec)
+        return pariVec
 
     def challenge(self, kappa: int, seed: list[int] | None = None) -> poly:
         """

@@ -12,42 +12,48 @@ class BGVParticipant(Participant):
     def __init__(
         self,
         comm_scheme: CommitmentScheme,
+        BGV_comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        Q: int,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(comm_scheme, secret_share, q, p, N, x)
-        self.a = self.polynomial.uniform_element()
-        self.cypari = self.polynomial.cypari
-        self.a_hash = self.hash(self.a)
+        super().__init__(
+            comm_scheme, BGV_comm_scheme, secret_share, Q, q, p, N, x
+        )
+        self.Q = Q
+        self.q = q
+        self.a = self.BGV_polynomial.uniform_element()
+        self.cypari = self.BGV_polynomial.cypari
+        self.a_hash = self.BGV_hash(self.a)
 
     def make_b(self):
         self.sum_a = self.a + sum([i.data for i in self.others["a"]])
         self.s, self.e = self.ternary(), self.ternary()
 
         self.com_s = self.__commit(self.s)
-        self.c_s = self.comm_scheme.commit(self.com_s)
+        self.c_s = self.BGV_comm_scheme.commit(self.com_s)
 
         self.com_e = self.__commit(self.e)
-        self.c_e = self.comm_scheme.commit(self.com_e)
+        self.c_e = self.BGV_comm_scheme.commit(self.com_e)
 
-        self.b = self.sum_a * self.s + self.p * self.e
-        self.b_hash = self.hash(self.b)
+        self.b = self.sum_a * self.s + self.q * self.e
+        self.b_hash = self.BGV_hash(self.b)
 
     def __commit(self, commitment):
         """
         Returns a commit object of the commitment and a randomness r. Can
         be used to commit with a commitment scheme and return c.
         """
-        return Commit(commitment, self.comm_scheme.r_commit())
+        return Commit(commitment, self.BGV_comm_scheme.r_commit())
 
     def make_secrets(self):
         def make_b(s, e):
             if s.x != e.x:
                 raise ValueError()
-            return SecretSharePoly(s.x, self.sum_a * s.p + self.p * e.p)
+            return SecretSharePoly(s.x, self.sum_a * s.p + self.q * e.p)
 
         add_val = lambda name, val: vals.get(name, []) + [val]
         to_tuple = lambda attr: tuple(vals[attr])
@@ -60,10 +66,14 @@ class BGVParticipant(Participant):
 
             com_s = self.__commit(s.p)
             vals["coms_s_bar"] = add_val("coms_s_bar", com_s)
-            vals["c_s_bar"] = add_val("c_s_bar", self.comm_scheme.commit(com_s))
+            vals["c_s_bar"] = add_val(
+                "c_s_bar", self.BGV_comm_scheme.commit(com_s)
+            )
             com_e = self.__commit(e.p)
             vals["coms_e_bar"] = add_val("coms_e_bar", com_e)
-            vals["c_e_bar"] = add_val("c_e_bar", self.comm_scheme.commit(com_e))
+            vals["c_e_bar"] = add_val(
+                "c_e_bar", self.BGV_comm_scheme.commit(com_e)
+            )
 
         self.b_bar = to_tuple("b_bar")
         self.coms_s_bar = to_tuple("coms_s_bar")
@@ -95,7 +105,7 @@ class BGVParticipant(Participant):
                     "Aborting. Name mismatch for participants."
                     + f"{self.name}: {c.name, com.name}"
                 )
-            if not self.comm_scheme.open(CommitOpen(c.data, com.data)):
+            if not self.BGV_comm_scheme.open(CommitOpen(c.data, com.data)):
                 raise ValueError(
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {c.name}"
@@ -114,24 +124,24 @@ class BGVParticipant(Participant):
         return self.pk, self.sk
 
     def enc(self, m) -> Ctx:
-        r, e_prime, e_bis = self.polynomial.gaussian_array(3, 1)
+        r, e_prime, e_bis = self.BGV_polynomial.gaussian_array(3, 1)
         mprime = self.cypari.liftall(m)
-        u = self.sum_a * r + self.p * e_prime
-        v = self.sum_b * r + self.p * e_bis + mprime
+        u = self.sum_a * r + self.q * e_prime
+        v = self.sum_b * r + self.q * e_bis + mprime
         return Ctx(u, v)
 
     def t_dec(self, ctx: Ctx, x: int):
         m = self.sk.commit.m * ctx.u * x
-        e = self.polynomial.uniform_element(2)
-        return m + self.p * e
+        e = self.BGV_polynomial.uniform_element(2)
+        return m + self.q * e
 
     def comb(self, ctx, d: list):
         round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
-        q_half = (self.q - 1) / 2
-        q_half_p = q_half % self.p
-        helper_array = round_and_pol(np.ones(self.N) * q_half)
+        Q_half = (self.Q - 1) / 2
+        Q_half_q = Q_half % self.q
+        helper_array = round_and_pol(np.ones(self.N) * Q_half)
         ptx = self.cypari.liftall(
             ctx.v - sum(d) + helper_array
-        ) * self.cypari.Mod(1, self.p)
-        ptx -= round_and_pol(np.ones(self.N) * (q_half_p))
+        ) * self.cypari.Mod(1, self.q)
+        ptx -= round_and_pol(np.ones(self.N) * (Q_half_q))
         return ptx

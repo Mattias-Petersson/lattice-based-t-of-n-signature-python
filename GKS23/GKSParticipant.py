@@ -10,18 +10,22 @@ class GKSParticipant(BGVParticipant):
     def __init__(
         self,
         comm_scheme: CommitmentScheme,
+        BGV_comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         message_space: Polynomial,
+        Q: int,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(comm_scheme, secret_share, q, p, N, x)
+        super().__init__(
+            comm_scheme, BGV_comm_scheme, secret_share, Q, q, p, N, x
+        )
         self.from_u = dict()
         self.message_space = message_space
-        self.a = self.polynomial.uniform_element()
-        self.a_hash = self.hash(self.a)
+        self.a_ts = self.polynomial.uniform_element()
+        self.a_ts_hash = self.hash(self.a_ts)
 
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data
@@ -48,11 +52,11 @@ class GKSParticipant(BGVParticipant):
         return [ctx1, ctx2]
 
     def KGen_step_2(self):
-        sum_a = self.a + sum([i.data for i in self.others["a"]])
+        sum_a = self.a_ts + sum([i.data for i in self.others["a_ts"]])
         self.a_vector = [sum_a, 1]
 
     def KGen_step_3(self):
-        self.s = self.message_space.gaussian_array(2, 4)
+        self.s = self.polynomial.gaussian_array(2, 4)
         self.y = self.__cross_prod(self.a_vector, self.s)
         self.y_hash = self.hash(self.y)
         self.ctx_s = [self.enc(s) for s in self.s]
@@ -63,7 +67,7 @@ class GKSParticipant(BGVParticipant):
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self, mu):
-        r = self.message_space.gaussian_array(2, 2**13)
+        r = self.polynomial.gaussian_array(2, 2**13)
         ck = self.hash((self.pk, mu))
         self.w = self.__cross_prod(self.a_vector, r)
         self.com_w = Commit(self.w, self.comm_scheme.r_commit())
@@ -96,5 +100,6 @@ class GKSParticipant(BGVParticipant):
         az = self.__cross_prod(self.a_vector, signature.z)
         cy = signature.c * self.pk.y
         w_star = self.cypari.liftall(az - cy)
+        print(w_star - self.all_w)
         hashed = self.hash((w_star, self.pk, mu))
         return hashed == self.c

@@ -13,27 +13,33 @@ from utils.Polynomial import Polynomial
 class GKS(Controller):
     def __init__(
         self,
+        Q: int,
         q: int,
         p: int,
         N: int,
         t: int,
         n: int,
     ):
+        self.Q = Q
         self.q = q
         self.p = p
         self.N = N
         self.t = t
         self.n = n
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
+        self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
-        self.secret_share = SecretShare((self.t, self.n), self.q)
+        self.secret_share = SecretShare((self.t, self.n), self.p)
+        self.BGV_secret_share = SecretShare((self.t, self.n), self.Q)
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
-                self.secret_share,
+                self.BGV_comm_scheme,
+                self.BGV_secret_share,
                 self.message_space,
+                self.Q,
                 self.q,
                 self.p,
                 self.N,
@@ -43,12 +49,12 @@ class GKS(Controller):
         )
         bgv_values = BGVValues(
             self.participants,
-            self.comm_scheme,
-            self.secret_share,
+            self.BGV_comm_scheme,
+            self.BGV_secret_share,
             self.t,
             self.n,
         )
-        self.BGV = BGV(bgv_values, p, q, N)
+        self.BGV = BGV(bgv_values, p=q, q=Q, N=N)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -61,7 +67,7 @@ class GKS(Controller):
             i.recv_from_subset(attr, data)
 
     def __KGen_step_2(self):
-        self.assert_value_matches_hash("a")
+        self.assert_value_matches_hash("a_ts")
         for p in self.participants:
             p.KGen_step_2()
 
@@ -107,15 +113,23 @@ class GKS(Controller):
     def vrfy(self, mu, u: GKSParticipant, signature: Signature):
         return u.verify_signature(mu, signature)
 
+    def get_message(self):
+        return self.message_space.uniform_element()
+
 
 if __name__ == "__main__":
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
     for _ in range(10):
-        m_sign = gks.BGV.get_message()
+        m_sign = gks.get_message()
+        m_enc = gks.BGV.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[:2])
-        res = gks.vrfy(m_sign, participants[0], signatures[0])
+        ctx = participants[0].enc(m_enc)
+        t_dec = gks.BGV.t_dec(participants[:2], ctx)
+        m_star = part.comb(ctx, t_dec)
+        res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
+
     print(results)
