@@ -1,7 +1,7 @@
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import Commit, ProofOfOpenLinear
-from SecretSharing.SecretShare import SecretShare
+from SecretSharing.SecretShare2 import SecretShare
 
 
 class RelationProver:
@@ -17,8 +17,8 @@ class RelationProver:
         self,
         ps,
         pe,
-        psis,
-        peis,
+        psi,
+        pei,
         a,
         p,
     ):
@@ -28,36 +28,29 @@ class RelationProver:
             self.comm_scheme.cypari.Pol("0"),
         ]
         proof1 = self.ZK.proof_of_sum(ps, pe, r0, a, p, 1)
-        proofs1 = []
-        for i in range(len(psis)):
-            proofs1.append(self.ZK.proof_of_sum(psis[i], peis[i], r0, a, p, 1))
         proof2 = self.ZK.proof_of_opening(ps)
         proof3 = self.ZK.proof_of_opening(pe)
-        proofs2 = []
-        for i in psis:
-            proofs2.append(self.ZK.proof_of_opening(i))
-        proofs3 = []
-        for i in peis:
-            proofs3.append(self.ZK.proof_of_opening(i))
-
-        return (proof1, proof2, proof3, proofs1, proofs2, proofs3)
+        proof4 = self.ZK.proof_of_opening(psi)
+        proof5 = self.ZK.proof_of_opening(pei)
+        proof6 = self.ZK.proof_of_sum(psi, pei, r0, a, p, 1)
+        return (proof1, proof2, proof3, proof4, proof5, proof6)
 
     def verify_sk(
         self,
         proof1,
         proof2,
         proof3,
-        proofs1,
-        proofs2,
-        proofs3,
+        proof4,
+        proof5,
+        proof6,
         b,
-        bis,
+        bi,
         a,
         p,
         coms,
         come,
-        comsis,
-        comeis,
+        comsi,
+        comei,
     ):
         r0 = [
             self.comm_scheme.cypari.Pol("0"),
@@ -84,32 +77,24 @@ class RelationProver:
         if not self.ZK.verify_proof_of_opening(come[0][0], proof3):
             print("False3")
             return False
-        for i in range(len(proofs1)):
-            combi = self.comm_scheme.commit(Commit(bis[i], r0))
-            proof, *rest = proofs1[i]
-            proof = tuple[
-                ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
-            ](
-                ProofOfOpenLinear(c, g, proof=proof)
-                for c, g, proof in [
-                    [comsis[i], a, proof[0]],
-                    [comeis[i], p, proof[1]],
-                    [combi, 1, proof[2]],
-                ]
-            )
-            if not self.ZK.verify_proof_of_sum(proof, *rest):
-                print("False4")
-                return False
-        for i in range(len(proofs2)):
-            if not self.ZK.verify_proof_of_opening(comsis[i][0][0], proofs2[i]):
-                print("False5")
-                return False
-        for i in range(len(proofs3)):
-            if not self.ZK.verify_proof_of_opening(comeis[i][0][0], proofs3[i]):
-                print("False6")
-                return False
-        if b != self.SSS.reconstruct_poly(bis[:2], range(1, 3)):
-            print("False7")
+        combi = self.comm_scheme.commit(Commit(bi, r0))
+        proof, *rest = proof6
+        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [comsi, a, proof[0]],
+                [comei, p, proof[1]],
+                [combi, 1, proof[2]],
+            ]
+        )
+        if not self.ZK.verify_proof_of_sum(proof, *rest):
+            print("False4")
+            return False
+        if not self.ZK.verify_proof_of_opening(comsi[0][0], proof4):
+            print("False5")
+            return False
+        if not self.ZK.verify_proof_of_opening(comei[0][0], proof5):
+            print("False6")
             return False
         return True
 

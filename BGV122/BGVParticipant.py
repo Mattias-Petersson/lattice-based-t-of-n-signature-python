@@ -1,4 +1,5 @@
 import numpy as np
+from BDLOP16.RelationProofs import RelationProver
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare2 import SecretShare
@@ -11,6 +12,7 @@ class BGVParticipant(Participant):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        relation_prover: RelationProver,
         Q: int,
         q: int,
         p: int,
@@ -22,6 +24,7 @@ class BGVParticipant(Participant):
         self.q = q
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
+        self.relation_prover = relation_prover
         self.BGV_hash = lambda x: self.BGV_polynomial.hash(
             self.BGV_comm_scheme.kappa, x
         )
@@ -66,23 +69,30 @@ class BGVParticipant(Participant):
 
         self.s_bar = self.secret_share.share_poly(self.s)
         self.e_bar = self.secret_share.share_poly(self.e)
+        com_s = self.__commit(self.s)
+        com_e = self.__commit(self.e)
         vals = dict()
         for s, e in zip(self.s_bar, self.e_bar):
             vals["b_bar"] = add_val("b_bar", make_b(s, e))
 
-            com_s = self.__commit(s.p)
-            vals["coms_s_bar"] = add_val("coms_s_bar", com_s)
+            com_s_bar = self.__commit(s.p)
+            vals["coms_s_bar"] = add_val("coms_s_bar", com_s_bar)
             vals["c_s_bar"] = add_val(
-                "c_s_bar", self.BGV_comm_scheme.commit(com_s)
+                "c_s_bar", self.BGV_comm_scheme.commit(com_s_bar)
             )
-            com_e = self.__commit(e.p)
-            vals["coms_e_bar"] = add_val("coms_e_bar", com_e)
+            com_e_bar = self.__commit(e.p)
+            vals["coms_e_bar"] = add_val("coms_e_bar", com_e_bar)
             vals["c_e_bar"] = add_val(
-                "c_e_bar", self.BGV_comm_scheme.commit(com_e)
+                "c_e_bar", self.BGV_comm_scheme.commit(com_e_bar)
             )
+            self.relation_prover.prove_sk(
+                com_s.r, com_e.r, com_s_bar.r, com_e_bar.r, self.sum_a, self.q
+            )  ##TODO: MATCH THESE TO EACH NAME
 
         self.b_bar = to_tuple("b_bar")
-        self.coms_s_bar = to_tuple("coms_s_bar")
+        self.coms_s_bar = to_tuple(
+            "coms_s_bar"
+        )  ## TODO: ONLY SEND COMMIT RANDOMS TO ONE PARTICIPANT FOR EACH RANDOM
         self.c_s_bar = to_tuple("c_s_bar")
         self.coms_e_bar = to_tuple("coms_e_bar")
         self.c_e_bar = to_tuple("c_e_bar")

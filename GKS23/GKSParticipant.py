@@ -1,3 +1,4 @@
+from BDLOP16.RelationProofs import RelationProver
 from BGV122.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
@@ -10,13 +11,16 @@ class GKSParticipant(BGVParticipant):
         comm_scheme: CommitmentScheme,
         BGV_comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
+        relation_prover: RelationProver,
         Q: int,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(BGV_comm_scheme, secret_share, Q, q, p, N, x)
+        super().__init__(
+            BGV_comm_scheme, secret_share, relation_prover, Q, q, p, N, x
+        )
         self.comm_scheme = comm_scheme
         self.from_u = dict()
         self.polynomial = comm_scheme.polynomial

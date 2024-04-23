@@ -1,6 +1,8 @@
 import time
 from typing import Iterable
+from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP16.RelationProofs import RelationProver
 from BGV122.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
@@ -29,6 +31,9 @@ class GKS(Controller):
         self.message_space = Polynomial(self.p, self.N)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare(tn, self.p)
+        self.RP = RelationProver(
+            BDLOP(self.comm_scheme), self.comm_scheme, self.secret_share
+        )
 
         self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
         self.BGV_secret_share = SecretShare(tn, self.Q)
@@ -38,6 +43,7 @@ class GKS(Controller):
                 self.comm_scheme,
                 self.BGV_comm_scheme,
                 self.BGV_secret_share,
+                self.RP,
                 self.Q,
                 self.q,
                 self.p,
@@ -113,11 +119,13 @@ class GKS(Controller):
 
 
 if __name__ == "__main__":
+    now = time.time()
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
+    print(round(time.time() - now, 6), "seconds")
     now = time.time()
-    for _ in range(100):
+    for _ in range(10):
         m_sign = gks.get_message()
         m_enc = gks.BGV.get_message()
         part = participants[0]
