@@ -27,7 +27,6 @@ class BGV(Controller):
             self.t,
             self.n,
         ) = self.__getValues(values, tn)
-
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
@@ -48,20 +47,16 @@ class BGV(Controller):
                 values.comm_scheme,
                 values.secret_share,
                 values.participants,
-                values.t,
-                values.n,
+                *values.tn,
             )
         assert tn is not None
-        t, n = tn
         comm = BDLOPCommScheme(q=self.q, N=self.N)
-        secrets = SecretShare((t, n), self.q)
+        secrets = SecretShare(tn, self.q)
         part = tuple(
-            BGVParticipant(
-                comm, comm, secrets, self.q, self.p, 1, self.N, i + 1
-            )
-            for i in range(n)
+            BGVParticipant(comm, secrets, self.q, self.p, 1, self.N, i + 1)
+            for i in range(tn[1])
         )
-        return comm, secrets, part, t, n
+        return comm, secrets, part, *tn
 
     def __compute_b(self):
         """

@@ -82,7 +82,7 @@ NameData = namedtuple("NameData", ["name", "data"])
 BgvSk = namedtuple("BgvSk", ["x", "commit"])
 BgvPk = namedtuple("BgvPk", ["a", "b", "commits"])
 BGVValues = namedtuple(
-    "BGVValues", ["participants", "comm_scheme", "secret_share", "t", "n"]
+    "BGVValues", ["participants", "comm_scheme", "secret_share", "tn"]
 )
 GksPk = namedtuple("GksPk", ["a", "y"])
 Signature = namedtuple("Signature", ["c", "z", "rho"])

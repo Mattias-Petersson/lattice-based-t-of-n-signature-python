@@ -1,5 +1,3 @@
-from typing import Iterable
-
 import numpy as np
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
@@ -12,7 +10,6 @@ class BGVParticipant(Participant):
     def __init__(
         self,
         comm_scheme: CommitmentScheme,
-        BGV_comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         Q: int,
         q: int,
@@ -20,14 +17,23 @@ class BGVParticipant(Participant):
         N: int,
         x: int,
     ):
-        super().__init__(
-            comm_scheme, BGV_comm_scheme, secret_share, Q, q, p, N, x
-        )
+        super().__init__(secret_share, Q, q, p, N, x)
         self.Q = Q
         self.q = q
+        self.BGV_comm_scheme = comm_scheme
+        self.BGV_polynomial = self.BGV_comm_scheme.polynomial
+        self.BGV_hash = lambda x: self.BGV_polynomial.hash(
+            self.BGV_comm_scheme.kappa, x
+        )
+        # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.kappa = 39
+        self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
         self.a = self.BGV_polynomial.uniform_element()
         self.cypari = self.BGV_polynomial.cypari
         self.a_hash = self.BGV_hash(self.a)
+
+    def hash(self, x):
+        return self.BGV_hash(x)
 
     def make_b(self):
         self.sum_a = self.a + sum([i.data for i in self.others["a"]])

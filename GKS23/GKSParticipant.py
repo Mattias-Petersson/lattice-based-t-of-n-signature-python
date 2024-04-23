@@ -1,9 +1,7 @@
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import Commit, CommitOpen, Ctx, GksPk, Signature, poly
-from utils.Polynomial import Polynomial
+from type.classes import Commit, Ctx, GksPk, Signature, poly
 
 
 class GKSParticipant(BGVParticipant):
@@ -12,20 +10,21 @@ class GKSParticipant(BGVParticipant):
         comm_scheme: CommitmentScheme,
         BGV_comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
-        message_space: Polynomial,
         Q: int,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(
-            comm_scheme, BGV_comm_scheme, secret_share, Q, q, p, N, x
-        )
+        super().__init__(BGV_comm_scheme, secret_share, Q, q, p, N, x)
+        self.comm_scheme = comm_scheme
         self.from_u = dict()
-        self.message_space = message_space
+        self.polynomial = comm_scheme.polynomial
         self.a_ts = self.polynomial.uniform_element()
         self.a_ts_hash = self.hash(self.a_ts)
+
+    def hash(self, m):
+        return self.polynomial.hash(self.comm_scheme.kappa, m)
 
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data

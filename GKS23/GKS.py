@@ -1,12 +1,11 @@
 from typing import Iterable
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGV import BGV
-from DOTT21.DOTT import DOTT
 from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
 from utils.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import BGVValues, Signature, poly
+from type.classes import TN, BGVValues, Signature, poly
 from utils.Polynomial import Polynomial
 
 
@@ -17,44 +16,39 @@ class GKS(Controller):
         q: int,
         p: int,
         N: int,
-        t: int,
-        n: int,
+        tn: TN,
     ):
         self.Q = Q
         self.q = q
         self.p = p
         self.N = N
-        self.t = t
-        self.n = n
+        self.t, self.n = tn
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
-        self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.N, self.p)
         self.cypari = self.comm_scheme.cypari
-        self.secret_share = SecretShare((self.t, self.n), self.p)
-        self.BGV_secret_share = SecretShare((self.t, self.n), self.Q)
+        self.secret_share = SecretShare(tn, self.p)
+
+        self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
+        self.BGV_secret_share = SecretShare(tn, self.Q)
+
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
                 self.BGV_comm_scheme,
                 self.BGV_secret_share,
-                self.message_space,
                 self.Q,
                 self.q,
                 self.p,
                 self.N,
                 i + 1,
             )
-            for i in range(n)
+            for i in range(self.n)
         )
         bgv_values = BGVValues(
-            self.participants,
-            self.BGV_comm_scheme,
-            self.BGV_secret_share,
-            self.t,
-            self.n,
+            self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(bgv_values, p=q, q=Q, N=N)
+        self.BGV = BGV(bgv_values, q, Q, N)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
