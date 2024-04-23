@@ -30,7 +30,7 @@ class GKSParticipant(BGVParticipant):
         self.from_u[attr] = data
 
     def __cross_prod(self, vec_1, vec_2):
-        return sum([v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True)])
+        return sum(v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True))
 
     def __make_ctx_s(self) -> list[Ctx]:
         """
@@ -51,7 +51,7 @@ class GKSParticipant(BGVParticipant):
         return [ctx1, ctx2]
 
     def KGen_step_2(self):
-        sum_a = self.a_ts + sum([i.data for i in self.others["a_ts"]])
+        sum_a = self.a_ts + sum(i.data for i in self.others["a_ts"])
         self.a_vector = [sum_a, 1]
 
     def KGen_step_3(self):
@@ -61,7 +61,7 @@ class GKSParticipant(BGVParticipant):
         self.ctx_s = [self.enc(s) for s in self.s]
 
     def KGen_step_4(self):
-        sum_y = self.y + sum([i.data for i in self.others["y"]])
+        sum_y = self.y + sum(i.data for i in self.others["y"])
         self.sum_ctx_s: list[Ctx] = self.__make_ctx_s()
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
@@ -74,9 +74,7 @@ class GKSParticipant(BGVParticipant):
         self.ctx_r = [self.enc(i) for i in r]
 
     def sign_2(self, mu, x: int):
-        self.all_w = self.cypari.liftall(
-            sum([u.data for u in self.from_u["w"]])
-        )
+        self.all_w = self.cypari.liftall(sum(u.data for u in self.from_u["w"]))
         self.c: poly = self.hash((self.all_w, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
@@ -92,13 +90,12 @@ class GKSParticipant(BGVParticipant):
             d1.append(d.data[1])
 
         z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
-        rho = sum([com.data.r for com in self.from_u["com_w"]])
+        rho = sum(com.data.r for com in self.from_u["com_w"])
         return Signature(self.c, z, rho)
 
     def verify_signature(self, mu, signature: Signature):
         az = self.__cross_prod(self.a_vector, signature.z)
         cy = signature.c * self.pk.y
         w_star = self.cypari.liftall(az - cy)
-        print(w_star - self.all_w)
         hashed = self.hash((w_star, self.pk, mu))
         return hashed == self.c

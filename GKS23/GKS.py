@@ -1,3 +1,4 @@
+import time
 from typing import Iterable
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BGV122.BGV import BGV
@@ -115,7 +116,8 @@ if __name__ == "__main__":
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
-    for _ in range(10):
+    now = time.time()
+    for _ in range(100):
         m_sign = gks.get_message()
         m_enc = gks.BGV.get_message()
         part = participants[0]
@@ -125,5 +127,5 @@ if __name__ == "__main__":
         m_star = part.comb(ctx, t_dec)
         res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
-
+    print(round(time.time() - now, 6), "seconds")
     print(results)
