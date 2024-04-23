@@ -25,7 +25,7 @@ class GKS(Controller):
         self.t, self.n = tn
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
-        self.message_space = Polynomial(self.N, self.p)
+        self.message_space = Polynomial(self.p, self.N)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare(tn, self.p)
 

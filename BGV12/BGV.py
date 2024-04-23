@@ -169,8 +169,8 @@ class BGV:
 
     def run(self):
         self.keyGen()
-        PH = Polynomial(1024, self.p)
-        PHq = Polynomial(1024, self.q)
+        PH = Polynomial(self.p, 1024)
+        PHq = Polynomial(self.q, 1024)
         m = PHq.in_rq(PHq.in_rq("1"))
         m2 = PHq.in_rq(PHq.in_rq("1"))
         print(m)

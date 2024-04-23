@@ -19,7 +19,7 @@ class SecretShare:
     def __init__(self, tn: TN, q: int):
         self.t, self.n = tn
         self.q = q
-        self.polynomial = Polynomial(self.t, self.q)
+        self.polynomial = Polynomial(self.q, self.t)
         self.cypari: cypari2.pari_instance.Pari = self.polynomial.cypari
 
     def __generatePoly(self, s):

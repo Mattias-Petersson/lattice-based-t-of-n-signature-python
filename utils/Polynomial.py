@@ -17,8 +17,8 @@ class Polynomial:
 
     def __init__(
         self,
-        N: int = 1024,
         q: int = 2**32 - 527,
+        N: int = 1024,
     ):
         self.cypari: cypari2.pari_instance.Pari = cypari2.Pari()
         self.cypari.allocatemem(10**10)
@@ -27,8 +27,8 @@ class Polynomial:
             raise ValueError("q needs to be prime.")
 
         self.gen = Generator(PCG64())
-        self.N = N
         self.q = q
+        self.N = N
 
     def uniform_element(self, bound: int = 0) -> poly:
         """

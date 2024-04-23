@@ -30,12 +30,12 @@ class BGVParticipant:
         self.q = q  # prime modulo
         self.N = N  # length of polynomials
         self.i = i
-        self.PH = Polynomial(N, q)
+        self.PH = Polynomial(q, N)
         self.SSS = SSS
         self.cypari = cypari
         self.comm_scheme = comm_scheme
         self.RP = RelationProofs
-        self.PHp = Polynomial(1024, self.p)
+        self.PHp = Polynomial(self.p, 1024)
 
     def step1(self):
         ai = self.PH.uniform_array(1)

@@ -20,7 +20,7 @@ class SecretShare:
         if self.t > self.n:
             raise ValueError("Got t larger than n in secret share.")
         self.q = q
-        self.polynomial = Polynomial(self.t, self.q)
+        self.polynomial = Polynomial(self.q, self.t)
         self.cypari = self.polynomial.cypari
 
     def __generatePoly(self, s: poly) -> poly:
