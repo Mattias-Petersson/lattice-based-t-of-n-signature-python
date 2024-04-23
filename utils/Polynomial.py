@@ -1,7 +1,6 @@
 import cypari2
 from numpy.random import Generator, PCG64
 import math
-from cypari2.convert import gen_to_python
 import hashlib
 
 from type.classes import poly

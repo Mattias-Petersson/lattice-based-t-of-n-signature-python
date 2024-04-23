@@ -1,4 +1,3 @@
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import TN, SecretSharePoly, poly
 from utils.Polynomial import Polynomial
 import numpy as np
