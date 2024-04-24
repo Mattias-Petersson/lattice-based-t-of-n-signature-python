@@ -39,7 +39,7 @@ class BGVParticipant(Participant):
         return self.BGV_hash(x)
 
     def make_b(self):
-        self.sum_a = self.a + sum([i.data for i in self.others["a"]])
+        self.sum_a = sum([i.data for i in self.others["a"]])
         self.s, self.e = self.ternary(), self.ternary()
 
         self.com_s = self.__commit(self.s)
@@ -59,6 +59,8 @@ class BGVParticipant(Participant):
         return Commit(commitment, self.BGV_comm_scheme.r_commit())
 
     def make_secrets(self):
+        """ """
+
         def make_b(s, e):
             if s.x != e.x:
                 raise ValueError()
@@ -69,33 +71,32 @@ class BGVParticipant(Participant):
 
         self.s_bar = self.secret_share.share_poly(self.s)
         self.e_bar = self.secret_share.share_poly(self.e)
-        com_s = self.__commit(self.s)
-        com_e = self.__commit(self.e)
         vals = dict()
+        self.sk_proofs = []
+        c_s_bars = []
+        c_e_bars = []
         for s, e in zip(self.s_bar, self.e_bar):
             vals["b_bar"] = add_val("b_bar", make_b(s, e))
-
             com_s_bar = self.__commit(s.p)
             vals["coms_s_bar"] = add_val("coms_s_bar", com_s_bar)
-            vals["c_s_bar"] = add_val(
-                "c_s_bar", self.BGV_comm_scheme.commit(com_s_bar)
-            )
+            c_s_bars.append(self.BGV_comm_scheme.commit(com_s_bar))
             com_e_bar = self.__commit(e.p)
-            vals["coms_e_bar"] = add_val("coms_e_bar", com_e_bar)
-            vals["c_e_bar"] = add_val(
-                "c_e_bar", self.BGV_comm_scheme.commit(com_e_bar)
+            c_e_bars.append(self.BGV_comm_scheme.commit(com_e_bar))
+            self.sk_proofs.append(
+                self.relation_prover.prove_sk(
+                    self.com_s.r,
+                    self.com_e.r,
+                    com_s_bar.r,
+                    com_e_bar.r,
+                    self.sum_a,
+                    self.q,
+                )
             )
-            self.relation_prover.prove_sk(
-                com_s.r, com_e.r, com_s_bar.r, com_e_bar.r, self.sum_a, self.q
-            )  ##TODO: MATCH THESE TO EACH NAME
 
         self.b_bar = to_tuple("b_bar")
-        self.coms_s_bar = to_tuple(
-            "coms_s_bar"
-        )  ## TODO: ONLY SEND COMMIT RANDOMS TO ONE PARTICIPANT FOR EACH RANDOM
-        self.c_s_bar = to_tuple("c_s_bar")
-        self.coms_e_bar = to_tuple("coms_e_bar")
-        self.c_e_bar = to_tuple("c_e_bar")
+        self.coms_s_bar = to_tuple("coms_s_bar")
+        self.c_s_bar = c_s_bars
+        self.c_e_bar = c_e_bars
 
     def reconstruct(self, data, t):
         """
@@ -115,26 +116,70 @@ class BGVParticipant(Participant):
                 )
 
     def check_open(self):
-        for c, com in zip(self.others["c_s_bar"], self.others["coms_s_bar"]):
-            if c.name != com.name:
+        for cs, ce, cs_bar, ce_bar, com, b, b_bar, proofs in zip(
+            self.others["c_s"],
+            self.others["c_e"],
+            self.others["c_s_bar"],
+            self.others["c_e_bar"],
+            self.others["coms_s_bar"],
+            self.others["b"],
+            self.others["b_bar"],
+            self.sk_proofs,
+        ):
+            if cs_bar.name != com.name:
                 raise ValueError(
                     "Aborting. Name mismatch for participants."
-                    + f"{self.name}: {c.name, com.name}"
+                    + f"{self.name}: {cs_bar.name, com.name}"
                 )
-            if not self.BGV_comm_scheme.open(CommitOpen(c.data, com.data)):
+
+            if not self.BGV_comm_scheme.open(
+                CommitOpen(cs_bar.data[self.x - 1], com.data)
+            ):
                 raise ValueError(
                     f"Aborting. User {self.name} got an invalid opening for "
-                    + f"user {c.name}"
+                    + f"user {cs_bar.name}"
+                )
+            if self.relation_prover.verify_sk(
+                *proofs,
+                b.data,
+                b_bar.data[1],
+                self.sum_a,
+                self.q,
+                cs.data,
+                ce.data,
+                cs_bar.data[self.x - 1],
+                ce_bar.data[self.x - 1],
+            ):
+                print("first works")  ##TODO: MAKE THESE WORK.
+
+            if not self.relation_prover.verify_sk(
+                *proofs,
+                b.data,
+                b_bar.data[1],
+                self.sum_a,
+                self.q,
+                cs.data,
+                ce.data,
+                cs_bar.data[self.x - 1],
+                ce_bar.data[self.x - 1],
+            ):
+                raise ValueError(
+                    f"Aborting. User {self.name} got an failing sk_proof for "
+                    + f"user {cs_bar.name}"
                 )
 
     def generate_final(self):
-        self.sum_b = self.b + sum([i.data for i in self.others["b"]])
+        self.sum_b = sum(i.data for i in self.others["b"])
         new_com = 0
         new_r = 0
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
-        self.c_s_k = sum([i.data for i in self.others["c_s_bar"]])
+        self.c_s_k = (
+            []
+        )  # TODO: Make better with list comprehension (this and 2 rows down)
+        for j in range(self.secret_share.n):
+            self.c_s_k.append(sum(i.data[j] for i in self.others["c_s_bar"]))
         self.pk = BgvPk(self.sum_a, self.sum_b, self.c_s_k)
         self.sk = BgvSk(self.x, Commit(new_com, new_r))
         return self.pk, self.sk

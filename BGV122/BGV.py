@@ -1,5 +1,7 @@
 from typing import Iterable
+from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP16.RelationProofs import RelationProver
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
 from BGV122.BGVParticipant import BGVParticipant
@@ -53,7 +55,16 @@ class BGV(Controller):
         comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare(tn, self.q)
         part = tuple(
-            BGVParticipant(comm, secrets, self.q, self.p, 1, self.N, i + 1)
+            BGVParticipant(
+                comm,
+                secrets,
+                RelationProver(BDLOP(comm), comm, secrets),
+                self.q,
+                self.p,
+                1,
+                self.N,
+                i + 1,
+            )
             for i in range(tn[1])
         )
         return comm, secrets, part, *tn
@@ -79,8 +90,10 @@ class BGV(Controller):
         all of them open successfully.
         """
         self.share_partials("coms_s_bar")
-        self.share_partials("c_s_bar")
-        self.share_partials("c_e_bar")
+        self.recv_share("c_s_bar")
+        self.recv_share("c_e_bar")
+        self.recv_share("c_s")
+        self.recv_share("c_e")
         for part in self.participants:
             part.check_open()
 

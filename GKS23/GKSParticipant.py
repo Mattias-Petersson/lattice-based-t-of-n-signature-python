@@ -40,8 +40,8 @@ class GKSParticipant(BGVParticipant):
         """
         Ctx_s is the sum of all individual ciphertexts ctx_s_j.
         """
-        ctx0 = Ctx(0, 0) + self.ctx_s[0]
-        ctx1 = Ctx(0, 0) + self.ctx_s[1]
+        ctx0 = Ctx(0, 0)
+        ctx1 = Ctx(0, 0)
         for d in self.others["ctx_s"]:
             ctx0 += d.data[0]
             ctx1 += d.data[1]
@@ -55,7 +55,7 @@ class GKSParticipant(BGVParticipant):
         return [ctx1, ctx2]
 
     def KGen_step_2(self):
-        sum_a = self.a_ts + sum(i.data for i in self.others["a_ts"])
+        sum_a = sum(i.data for i in self.others["a_ts"])
         self.a_vector = [sum_a, 1]
 
     def KGen_step_3(self):
@@ -65,7 +65,7 @@ class GKSParticipant(BGVParticipant):
         self.ctx_s = [self.enc(s) for s in self.s]
 
     def KGen_step_4(self):
-        sum_y = self.y + sum(i.data for i in self.others["y"])
+        sum_y = sum(i.data for i in self.others["y"])
         self.sum_ctx_s: list[Ctx] = self.__make_ctx_s()
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 

@@ -31,13 +31,14 @@ class GKS(Controller):
         self.message_space = Polynomial(self.p, self.N)
         self.cypari = self.comm_scheme.cypari
         self.secret_share = SecretShare(tn, self.p)
-        self.RP = RelationProver(
-            BDLOP(self.comm_scheme), self.comm_scheme, self.secret_share
-        )
 
         self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
         self.BGV_secret_share = SecretShare(tn, self.Q)
-
+        self.RP = RelationProver(
+            BDLOP(self.BGV_comm_scheme),
+            self.BGV_comm_scheme,
+            self.BGV_secret_share,
+        )
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,

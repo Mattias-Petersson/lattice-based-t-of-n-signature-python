@@ -27,6 +27,8 @@ class Participant(ABC):
         self.N = N
         # what x that is associated with this participant's secret shares.
         self.x = x
+        # All participants other than self.
+        self.participant_names = []
         self.secret_share = secret_share
         self.others = dict()
 
