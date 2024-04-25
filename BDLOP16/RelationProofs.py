@@ -17,8 +17,8 @@ class RelationProver:
         self,
         ps,
         pe,
-        psi,
-        pei,
+        psis,
+        peis,
         a,
         p,
     ):
@@ -30,27 +30,31 @@ class RelationProver:
         proof1 = self.ZK.proof_of_sum(ps, pe, r0, a, p, 1)
         proof2 = self.ZK.proof_of_opening(ps)
         proof3 = self.ZK.proof_of_opening(pe)
-        proof4 = self.ZK.proof_of_opening(psi)
-        proof5 = self.ZK.proof_of_opening(pei)
-        proof6 = self.ZK.proof_of_sum(psi, pei, r0, a, p, 1)
-        return (proof1, proof2, proof3, proof4, proof5, proof6)
+        proofs1 = []
+        proofs2 = []
+        proofs3 = []
+        for i in range(len(psis)):
+            proofs1.append(self.ZK.proof_of_opening(psis[i]))
+            proofs2.append(self.ZK.proof_of_opening(peis[i]))
+            proofs3.append(self.ZK.proof_of_sum(psis[i], peis[i], r0, a, p, 1))
+        return (proof1, proof2, proof3, proofs1, proofs2, proofs3)
 
     def verify_sk(
         self,
         proof1,
         proof2,
         proof3,
-        proof4,
-        proof5,
-        proof6,
+        proofs1,
+        proofs2,
+        proofs3,
         b,
-        bi,
+        bis,
         a,
         p,
         coms,
         come,
-        comsi,
-        comei,
+        comsis,
+        comeis,
     ):
         r0 = [
             self.comm_scheme.cypari.Pol("0"),
@@ -77,40 +81,60 @@ class RelationProver:
         if not self.ZK.verify_proof_of_opening(come[0][0], proof3):
             print("False3")
             return False
-        combi = self.comm_scheme.commit(Commit(bi, r0))
-        proof, *rest = proof6
-        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
-            ProofOfOpenLinear(c, g, proof=proof)
-            for c, g, proof in [
-                [comsi, a, proof[0]],
-                [comei, p, proof[1]],
-                [combi, 1, proof[2]],
-            ]
-        )
-        if not self.ZK.verify_proof_of_sum(proof, *rest):
-            print("False4")
-            return False
-        if not self.ZK.verify_proof_of_opening(comsi[0][0], proof4):
-            print("False5")
-            return False
-        if not self.ZK.verify_proof_of_opening(comei[0][0], proof5):
-            print("False6")
-            return False
+        for i in range(len(bis)):
+            combi = self.comm_scheme.commit(Commit(bis[i][1], r0))
+            proof, *rest = proofs3[i]
+            proof = tuple[
+                ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear
+            ](
+                ProofOfOpenLinear(c, g, proof=proof)
+                for c, g, proof in [
+                    [comsis[i], a, proof[0]],
+                    [comeis[i], p, proof[1]],
+                    [combi, 1, proof[2]],
+                ]
+            )
+            if not self.ZK.verify_proof_of_sum(proof, *rest):
+                print("False4")
+                return False
+            if not self.ZK.verify_proof_of_opening(comsis[i][0][0], proofs1[i]):
+                print("False5")
+                return False
+            if not self.ZK.verify_proof_of_opening(comeis[i][0][0], proofs2[i]):
+                print("False6")
+                return False
         return True
 
-    def prove_enc(self, p_r, p_m, p_eprime, p_ebis, a, b, p):
+    def prove_enc(self, r, m, eprime, ebis, a, b, p):
         r0 = [
             self.comm_scheme.cypari.Pol("0"),
             self.comm_scheme.cypari.Pol("0"),
             self.comm_scheme.cypari.Pol("0"),
         ]
-        proof1 = self.ZK.proof_of_sum(p_r, p_eprime, r0, a, p, 1)
-        proof2 = self.ZK.proof_of_triple_sum(p_r, p_ebis, p_m, r0, b, p, 1, 1)
-        proof3 = self.ZK.proof_of_opening(p_r)
-        proof4 = self.ZK.proof_of_opening(p_m)
-        proof5 = self.ZK.proof_of_opening(p_eprime)
-        proof6 = self.ZK.proof_of_opening(p_ebis)
-        return (proof1, proof2, proof3, proof4, proof5, proof6)
+        com_r = Commit(r, self.comm_scheme.r_commit())
+        com_m = Commit(m, self.comm_scheme.r_commit())
+        com_eprime = Commit(eprime, self.comm_scheme.r_commit())
+        com_ebis = Commit(ebis, self.comm_scheme.r_commit())
+        proof1 = self.ZK.proof_of_sum(com_r.r, com_eprime.r, r0, a, p, 1)
+        proof2 = self.ZK.proof_of_triple_sum(
+            com_r.r, com_ebis.r, com_m.r, r0, b, p, 1, 1
+        )
+        proof3 = self.ZK.proof_of_opening(com_r.r)
+        proof4 = self.ZK.proof_of_opening(com_m.r)
+        proof5 = self.ZK.proof_of_opening(com_eprime.r)
+        proof6 = self.ZK.proof_of_opening(com_ebis.r)
+        return (
+            proof1,
+            proof2,
+            proof3,
+            proof4,
+            proof5,
+            proof6,
+            self.comm_scheme.commit(com_r),
+            self.comm_scheme.commit(com_m),
+            self.comm_scheme.commit(com_eprime),
+            self.comm_scheme.commit(com_ebis),
+        )
 
     def verify_enc(
         self,
@@ -120,15 +144,15 @@ class RelationProver:
         proof4,
         proof5,
         proof6,
+        com_r,
+        com_m,
+        com_eprime,
+        com_ebis,
         a,
         b,
         p,
         u,
         v,
-        com_r,
-        com_m,
-        com_eprime,
-        com_ebis,
     ):
         r0 = [
             self.comm_scheme.cypari.Pol("0"),
@@ -149,7 +173,7 @@ class RelationProver:
             ]
         )
         if not self.ZK.verify_proof_of_sum(proof, *rest):
-            # print("fail1")
+            print("fail1")
             retVal = False
         proof, *rest = proof2
         proof = tuple[
@@ -167,19 +191,19 @@ class RelationProver:
             ]
         )
         if not self.ZK.verify_proof_of_triple_sum(proof, *rest):
-            # print("fail2")
+            print("fail2")
             retVal = False
         if not self.ZK.verify_proof_of_opening(com_r[0][0], proof3):
-            # print("fail3")
+            print("fail3")
             retVal = False
         if not self.ZK.verify_proof_of_opening(com_m[0][0], proof4):
-            # print("fail4")
+            print("fail4")
             retVal = False
         if not self.ZK.verify_proof_of_opening(com_eprime[0][0], proof5):
-            # print("fail5")
+            print("fail5")
             retVal = False
         if not self.ZK.verify_proof_of_opening(com_ebis[0][0], proof6):
-            # print("fail6")
+            print("fail6")
             retVal = False
         return retVal
 
@@ -195,6 +219,12 @@ class RelationProver:
         proof3 = self.ZK.proof_of_sum(p_si, p_Ei, r0, proof3_fac, p, 1)
         return (proof1, proof2, proof3, proof3_fac)
 
+    def prove_r(self, a_vec, random_vec, sum):
+        r0 = Commit(random_vec[0], self.comm_scheme.r_commit())
+        r1 = Commit(random_vec[1], self.comm_scheme.r_commit())
+        proof = self.ZK.proof_of_sum(r0.r, r1.r, sum, a_vec[0], a_vec[1], 1)
+        return proof, self.comm_scheme.commit(r0), self.comm_scheme.commit(r1)
+
     def verify_ds(
         self, proof1, proof2, proof3, proof3_fac, p, com_si, com_Ei, ds
     ):
@@ -205,8 +235,10 @@ class RelationProver:
         ]
         com_ds = self.comm_scheme.commit(Commit(ds, r0))
         if not self.ZK.verify_proof_of_opening(com_si[0][0], proof1):
+            print("False1")
             return False
         if not self.ZK.verify_proof_of_opening(com_Ei[0][0], proof2):
+            print("False2")
             return False
         proof, *rest = proof3
         proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
@@ -218,5 +250,6 @@ class RelationProver:
             ]
         )
         if not self.ZK.verify_proof_of_sum(proof, *rest):
+            print("False3")
             return False
         return True

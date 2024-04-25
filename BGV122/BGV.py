@@ -91,9 +91,11 @@ class BGV(Controller):
         """
         self.share_partials("coms_s_bar")
         self.recv_share("c_s_bar")
+        self.recv_share("b_bars")
         self.recv_share("c_e_bar")
         self.recv_share("c_s")
         self.recv_share("c_e")
+        self.recv_share("sk_proof")
         for part in self.participants:
             part.check_open()
 

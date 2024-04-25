@@ -59,20 +59,26 @@ class ProofOfOpenLinear(ProofOfOpen):
 
 
 class Ctx:
-    def __init__(self, u, v):
-        self.u, self.v = u, v
+    def __init__(self, u, v, proof):
+        self.u, self.v, self.proof = u, v, proof
 
     def __add__(self, other: "Ctx") -> "Ctx":
-        return Ctx(self.u + other.u, self.v + other.v)
+        return Ctx(self.u + other.u, self.v + other.v, None)
 
     def __mul__(self, n: poly) -> "Ctx":
-        return Ctx(self.u * n, self.v * n)
+        return Ctx(self.u * n, self.v * n, None)
 
     def __eq__(self, other: "Ctx"):
         return self.u == other.u and self.v == other.v
 
     def __hash__(self):
         return hash((str(self.u), str(self.v)))
+
+    def verify(self, RP, a, b, p):
+        if self.proof == None:
+            print("testing proof of altered CTX")
+            return False
+        return RP.verify_enc(*self.proof, a, b, p, self.u, self.v)
 
     __rmul__ = __mul__
 

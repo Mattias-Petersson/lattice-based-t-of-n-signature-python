@@ -33,6 +33,19 @@ class GKSParticipant(BGVParticipant):
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data
 
+    def __verify_ctx(self, d):
+        if not (
+            d.data[0].verify(
+                self.relation_prover, self.sum_a, self.sum_b, self.q
+            )
+        ) and d.data[1].verify(
+            self.relation_prover, self.sum_a, self.sum_b, self.q
+        ):
+            raise ValueError(
+                f"Aborting. User {self.name} got an failing enc_proof for "
+                + f"user {d.name}"
+            )
+
     def __cross_prod(self, vec_1, vec_2):
         return sum(v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True))
 
@@ -40,16 +53,18 @@ class GKSParticipant(BGVParticipant):
         """
         Ctx_s is the sum of all individual ciphertexts ctx_s_j.
         """
-        ctx0 = Ctx(0, 0)
-        ctx1 = Ctx(0, 0)
+        ctx0 = Ctx(0, 0, None)
+        ctx1 = Ctx(0, 0, None)
         for d in self.others["ctx_s"]:
+            self.__verify_ctx(d)
             ctx0 += d.data[0]
             ctx1 += d.data[1]
         return [ctx0, ctx1]
 
     def __sum_ctx_r(self) -> list[Ctx]:
-        ctx1, ctx2 = Ctx(0, 0), Ctx(0, 0)
+        ctx1, ctx2 = Ctx(0, 0, None), Ctx(0, 0, None)
         for d in self.from_u["ctx_r"]:
+            self.__verify_ctx(d)
             ctx1 += d.data[0]
             ctx2 += d.data[1]
         return [ctx1, ctx2]

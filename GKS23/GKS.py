@@ -128,12 +128,8 @@ if __name__ == "__main__":
     now = time.time()
     for _ in range(10):
         m_sign = gks.get_message()
-        m_enc = gks.BGV.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[:2])
-        ctx = participants[0].enc(m_enc)
-        t_dec = gks.BGV.t_dec(participants[:2], ctx)
-        m_star = part.comb(ctx, t_dec)
         res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
     print(round(time.time() - now, 6), "seconds")

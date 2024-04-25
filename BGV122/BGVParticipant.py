@@ -72,9 +72,10 @@ class BGVParticipant(Participant):
         self.s_bar = self.secret_share.share_poly(self.s)
         self.e_bar = self.secret_share.share_poly(self.e)
         vals = dict()
-        self.sk_proofs = []
         c_s_bars = []
         c_e_bars = []
+        s_rs = []
+        e_rs = []
         for s, e in zip(self.s_bar, self.e_bar):
             vals["b_bar"] = add_val("b_bar", make_b(s, e))
             com_s_bar = self.__commit(s.p)
@@ -82,18 +83,21 @@ class BGVParticipant(Participant):
             c_s_bars.append(self.BGV_comm_scheme.commit(com_s_bar))
             com_e_bar = self.__commit(e.p)
             c_e_bars.append(self.BGV_comm_scheme.commit(com_e_bar))
-            self.sk_proofs.append(
-                self.relation_prover.prove_sk(
-                    self.com_s.r,
-                    self.com_e.r,
-                    com_s_bar.r,
-                    com_e_bar.r,
-                    self.sum_a,
-                    self.q,
-                )
-            )
+            s_rs.append(com_s_bar.r)
+            e_rs.append(com_e_bar.r)
 
-        self.b_bar = to_tuple("b_bar")
+        self.sk_proof = self.relation_prover.prove_sk(
+            self.com_s.r,
+            self.com_e.r,
+            s_rs,
+            e_rs,
+            self.sum_a,
+            self.q,
+        )
+        self.b_bar = to_tuple(
+            "b_bar"
+        )  # only shares partially, each part to who should get it
+        self.b_bars = to_tuple("b_bar")  # shares all parts to everyone
         self.coms_s_bar = to_tuple("coms_s_bar")
         self.c_s_bar = c_s_bars
         self.c_e_bar = c_e_bars
@@ -123,8 +127,8 @@ class BGVParticipant(Participant):
             self.others["c_e_bar"],
             self.others["coms_s_bar"],
             self.others["b"],
-            self.others["b_bar"],
-            self.sk_proofs,
+            self.others["b_bars"],
+            self.others["sk_proof"],
         ):
             if cs_bar.name != com.name:
                 raise ValueError(
@@ -139,29 +143,21 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {cs_bar.name}"
                 )
-            if self.relation_prover.verify_sk(
-                *proofs,
-                b.data,
-                b_bar.data[1],
-                self.sum_a,
-                self.q,
-                cs.data,
-                ce.data,
-                cs_bar.data[self.x - 1],
-                ce_bar.data[self.x - 1],
-            ):
-                print("first works")  ##TODO: MAKE THESE WORK.
-
+            if self.secret_share.reconstruct_poly(b_bar.data) != b.data:
+                raise ValueError(
+                    f"Aborting. User {self.name} got an invalid sk proof for "
+                    + f"user {cs_bar.name}"
+                )
             if not self.relation_prover.verify_sk(
-                *proofs,
+                *proofs.data,
                 b.data,
-                b_bar.data[1],
+                b_bar.data,
                 self.sum_a,
                 self.q,
                 cs.data,
                 ce.data,
-                cs_bar.data[self.x - 1],
-                ce_bar.data[self.x - 1],
+                cs_bar.data,
+                ce_bar.data,
             ):
                 raise ValueError(
                     f"Aborting. User {self.name} got an failing sk_proof for "
@@ -189,20 +185,49 @@ class BGVParticipant(Participant):
         mprime = self.cypari.liftall(m)
         u = self.sum_a * r + self.q * e_prime
         v = self.sum_b * r + self.q * e_bis + mprime
-        return Ctx(u, v)
+        proof = self.relation_prover.prove_enc(
+            r,
+            self.BGV_polynomial.in_rq(mprime),
+            e_prime,
+            e_bis,
+            self.sum_a,
+            self.sum_b,
+            self.q,
+        )
+        return Ctx(u, v, proof)
 
     def t_dec(self, ctx: Ctx, x: int):
+
         m = self.sk.commit.m * ctx.u * x
         e = self.BGV_polynomial.uniform_element(2)
-        return m + self.q * e
+        u = m + self.q * e
+        com_e = self.__commit(e)
+        ds_proof = self.relation_prover.prove_ds(
+            self.sk.commit.r, com_e.r, ctx.u, x, self.q
+        )
+        return (
+            ds_proof,
+            self.BGV_comm_scheme.commit(self.sk.commit),
+            self.BGV_comm_scheme.commit(com_e),
+            u,
+        )
 
     def comb(self, ctx, d: list):
+        d_u = []
+        for i in d:
+            if not self.relation_prover.verify_ds(
+                *i[0], self.q, i[1], i[2], i[3]
+            ):
+                raise ValueError(
+                    f"Aborting. User {self.name} got an invalid T_dec proof"
+                )
+            d_u.append(i[3])
         round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
         Q_half = (self.Q - 1) / 2
         Q_half_q = Q_half % self.q
         helper_array = round_and_pol(np.ones(self.N) * Q_half)
         ptx = self.cypari.liftall(
-            ctx.v - sum(d) + helper_array
+            ctx.v - sum(d_u) + helper_array
         ) * self.cypari.Mod(1, self.q)
         ptx -= round_and_pol(np.ones(self.N) * (Q_half_q))
         return ptx
