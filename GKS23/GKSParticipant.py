@@ -122,8 +122,10 @@ class GKSParticipant(BGVParticipant):
                     f"Aborting. User {self.name} got an failing r_proof for "
                     + f"user {proof.name}"
                 )
-        self.all_w = self.cypari.liftall(sum(u.data for u in self.from_u["w"]))
-        self.c: poly = self.hash((self.all_w, self.pk, mu))
+        self.sum_cw = self.cypari.liftall(
+            sum(u.data for u in self.from_u["c_w"])
+        )
+        self.c: poly = self.hash((self.sum_cw, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx_r()
         self.ctx_z: list[Ctx] = [
@@ -145,5 +147,13 @@ class GKSParticipant(BGVParticipant):
         az = self.__cross_prod(self.a_vector, signature.z)
         cy = signature.c * self.pk.y
         w_star = self.cypari.liftall(az - cy)
-        hashed = self.hash((w_star, self.pk, mu))
+        hashed = self.hash(
+            (
+                self.cypari.liftall(
+                    self.comm_scheme.commit(Commit(w_star, signature.rho))
+                ),
+                self.pk,
+                mu,
+            )
+        )
         return hashed == self.c
