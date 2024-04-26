@@ -207,6 +207,68 @@ class RelationProver:
             retVal = False
         return retVal
 
+    def prove_s(self, a_vec, random_vec):
+        sum_random = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        r0 = Commit(random_vec[0], self.comm_scheme.r_commit())
+        r1 = Commit(random_vec[1], self.comm_scheme.r_commit())
+        proof = self.ZK.proof_of_sum(
+            r0.r, r1.r, sum_random, a_vec[0], a_vec[1], 1
+        )
+        return proof, self.comm_scheme.commit(r0), self.comm_scheme.commit(r1)
+
+    def verify_s(self, proof, rc0, rc1, a_vec, sum):
+        r0 = [
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+            self.comm_scheme.cypari.Pol("0"),
+        ]
+        com_sum = self.comm_scheme.commit(Commit(sum, r0))
+        proof, *rest = proof
+        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [rc0, a_vec[0], proof[0]],
+                [rc1, a_vec[1], proof[1]],
+                [com_sum, 1, proof[2]],
+            ]
+        )
+        return self.ZK.verify_proof_of_sum(proof, *rest)
+
+    def prove_r(self, a_vec, random_vec, sum_random):
+        r0 = Commit(random_vec[0], self.comm_scheme.r_commit())
+        r1 = Commit(random_vec[1], self.comm_scheme.r_commit())
+
+        proof1 = self.ZK.proof_of_sum(
+            r0.r, r1.r, sum_random, a_vec[0], a_vec[1], 1
+        )
+        proof2 = self.ZK.proof_of_opening(
+            sum_random
+        )  # This should be a proof of trapdoor opening
+        return (
+            proof1,
+            proof2,
+            self.comm_scheme.commit(r0),
+            self.comm_scheme.commit(r1),
+        )
+
+    def verify_r(self, proof1, proof2, rc0, rc1, a_vec, c_sum):
+        proof, *rest = proof1
+        proof = tuple[ProofOfOpenLinear, ProofOfOpenLinear, ProofOfOpenLinear](
+            ProofOfOpenLinear(c, g, proof=proof)
+            for c, g, proof in [
+                [rc0, a_vec[0], proof[0]],
+                [rc1, a_vec[1], proof[1]],
+                [c_sum, 1, proof[2]],
+            ]
+        )
+        return self.ZK.verify_proof_of_sum(
+            proof, *rest
+        ) and self.ZK.verify_proof_of_opening(c_sum[0][0], proof2)
+
     def prove_ds(self, p_si, p_Ei, u, lagrange, p):
         r0 = [
             self.comm_scheme.cypari.Pol("0"),
@@ -218,12 +280,6 @@ class RelationProver:
         proof3_fac = self.comm_scheme.cypari(lagrange * u)
         proof3 = self.ZK.proof_of_sum(p_si, p_Ei, r0, proof3_fac, p, 1)
         return (proof1, proof2, proof3, proof3_fac)
-
-    def prove_r(self, a_vec, random_vec, sum):
-        r0 = Commit(random_vec[0], self.comm_scheme.r_commit())
-        r1 = Commit(random_vec[1], self.comm_scheme.r_commit())
-        proof = self.ZK.proof_of_sum(r0.r, r1.r, sum, a_vec[0], a_vec[1], 1)
-        return proof, self.comm_scheme.commit(r0), self.comm_scheme.commit(r1)
 
     def verify_ds(
         self, proof1, proof2, proof3, proof3_fac, p, com_si, com_Ei, ds

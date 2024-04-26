@@ -13,6 +13,7 @@ class BGVParticipant(Participant):
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         relation_prover: RelationProver,
+        BGV_relation_prover: RelationProver,
         Q: int,
         q: int,
         p: int,
@@ -25,6 +26,7 @@ class BGVParticipant(Participant):
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
         self.relation_prover = relation_prover
+        self.BGV_relation_prover = BGV_relation_prover
         self.BGV_hash = lambda x: self.BGV_polynomial.hash(
             self.BGV_comm_scheme.kappa, x
         )
@@ -86,7 +88,7 @@ class BGVParticipant(Participant):
             s_rs.append(com_s_bar.r)
             e_rs.append(com_e_bar.r)
 
-        self.sk_proof = self.relation_prover.prove_sk(
+        self.sk_proof = self.BGV_relation_prover.prove_sk(
             self.com_s.r,
             self.com_e.r,
             s_rs,
@@ -148,7 +150,7 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid sk proof for "
                     + f"user {cs_bar.name}"
                 )
-            if not self.relation_prover.verify_sk(
+            if not self.BGV_relation_prover.verify_sk(
                 *proofs.data,
                 b.data,
                 b_bar.data,
@@ -185,7 +187,7 @@ class BGVParticipant(Participant):
         mprime = self.cypari.liftall(m)
         u = self.sum_a * r + self.q * e_prime
         v = self.sum_b * r + self.q * e_bis + mprime
-        proof = self.relation_prover.prove_enc(
+        proof = self.BGV_relation_prover.prove_enc(
             r,
             self.BGV_polynomial.in_rq(mprime),
             e_prime,
@@ -202,7 +204,7 @@ class BGVParticipant(Participant):
         e = self.BGV_polynomial.uniform_element(2)
         u = m + self.q * e
         com_e = self.__commit(e)
-        ds_proof = self.relation_prover.prove_ds(
+        ds_proof = self.BGV_relation_prover.prove_ds(
             self.sk.commit.r, com_e.r, ctx.u, x, self.q
         )
         return (
@@ -215,7 +217,7 @@ class BGVParticipant(Participant):
     def comb(self, ctx, d: list):
         d_u = []
         for i in d:
-            if not self.relation_prover.verify_ds(
+            if not self.BGV_relation_prover.verify_ds(
                 *i[0], self.q, i[1], i[2], i[3]
             ):
                 raise ValueError(

@@ -35,6 +35,11 @@ class GKS(Controller):
         self.BGV_comm_scheme = BDLOPCommScheme(q=self.Q, N=self.N)
         self.BGV_secret_share = SecretShare(tn, self.Q)
         self.RP = RelationProver(
+            BDLOP(self.comm_scheme),
+            self.comm_scheme,
+            self.secret_share,
+        )
+        self.BGV_RP = RelationProver(
             BDLOP(self.BGV_comm_scheme),
             self.BGV_comm_scheme,
             self.BGV_secret_share,
@@ -45,6 +50,7 @@ class GKS(Controller):
                 self.BGV_comm_scheme,
                 self.BGV_secret_share,
                 self.RP,
+                self.BGV_RP,
                 self.Q,
                 self.q,
                 self.p,
@@ -78,6 +84,7 @@ class GKS(Controller):
             p.KGen_step_3()
         self.recv_share("y")
         self.recv_share("ctx_s")
+        self.recv_share("proof_s")
 
     def __finalize(self):
         self.assert_value_matches_hash("y")
@@ -98,7 +105,9 @@ class GKS(Controller):
         for p in U:
             p.sign_1(mu)
         self.__send_to_subset("ctx_r", U)
+        self.__send_to_subset("proof_r", U)
         self.__send_to_subset("w", U)
+        self.__send_to_subset("c_w", U)
 
     def __sign_2(self, mu: poly, U: Iterable[GKSParticipant], lagrange_x):
         for p, x in zip(U, lagrange_x):
