@@ -138,14 +138,15 @@ if __name__ == "__main__":
     participants = gks.KGen()
     print(round(time.time() - now, 6), "seconds")
     now = time.time()
-    for _ in range(1):
+    gks.counter.print()
+    gks.counter.reset()
+    for _ in range(10):
         m_sign = gks.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[:2])
         res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
+        gks.counter.print()
+        gks.counter.reset()
     print(round(time.time() - now, 6), "seconds")
     print(results)
-    print(gks.counter.mult)
-    print(gks.counter.mod)
-    print(gks.counter.add)
