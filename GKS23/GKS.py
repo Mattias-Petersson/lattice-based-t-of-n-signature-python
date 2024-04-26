@@ -1,56 +1,71 @@
+import time
 from typing import Iterable
+from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP16.RelationProofs import RelationProver
 from BGV122.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
 from GKS23.MultiCounter import MultiCounter
 from Models.Controller import Controller
-from Models.values import default_values
+from utils.values import default_values
 from SecretSharing.SecretShare2 import SecretShare
-from type.classes import BGVValues, Signature, poly
+from type.classes import TN, BGVValues, Signature, poly
 from utils.Polynomial import Polynomial
 
 
 class GKS(Controller):
     def __init__(
         self,
+        Q: int,
         q: int,
         p: int,
         N: int,
-        t: int,
-        n: int,
+        tn: TN,
     ):
+        self.Q = Q
         self.q = q
         self.p = p
         self.N = N
-        self.t = t
-        self.n = n
         self.counter = MultiCounter()
+        self.t, self.n = tn
         self.comm_scheme = BDLOPCommScheme(self.counter, q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
-        self.message_space = Polynomial(self.counter, self.N, self.p)
+        self.message_space = Polynomial(self.counter, self.p, self.N)
         self.cypari = self.comm_scheme.cypari
-        self.secret_share = SecretShare((self.t, self.n), self.q, self.counter)
+        self.secret_share = SecretShare(tn, self.p, self.counter)
+
+        self.BGV_comm_scheme = BDLOPCommScheme(self.counter, q=self.Q, N=self.N)
+        self.BGV_secret_share = SecretShare(tn, self.Q, self.counter)
+        self.RP = RelationProver(
+            BDLOP(self.comm_scheme),
+            self.comm_scheme,
+            self.secret_share,
+        )
+        self.BGV_RP = RelationProver(
+            BDLOP(self.BGV_comm_scheme),
+            self.BGV_comm_scheme,
+            self.BGV_secret_share,
+        )
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
-                self.secret_share,
-                self.message_space,
+                self.BGV_comm_scheme,
+                self.BGV_secret_share,
+                self.RP,
+                self.BGV_RP,
                 self.counter,
+                self.Q,
                 self.q,
                 self.p,
                 self.N,
                 i + 1,
             )
-            for i in range(n)
+            for i in range(self.n)
         )
         bgv_values = BGVValues(
-            self.participants,
-            self.comm_scheme,
-            self.secret_share,
-            self.t,
-            self.n,
+            self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(bgv_values, p, q, N)
+        self.BGV = BGV(bgv_values, q, Q, N)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -63,7 +78,7 @@ class GKS(Controller):
             i.recv_from_subset(attr, data)
 
     def __KGen_step_2(self):
-        self.assert_value_matches_hash("a")
+        self.assert_value_matches_hash("a_ts")
         for p in self.participants:
             p.KGen_step_2()
 
@@ -72,6 +87,7 @@ class GKS(Controller):
             p.KGen_step_3()
         self.recv_share("y")
         self.recv_share("ctx_s")
+        self.recv_share("proof_s")
 
     def __finalize(self):
         self.assert_value_matches_hash("y")
@@ -92,7 +108,9 @@ class GKS(Controller):
         for p in U:
             p.sign_1(mu)
         self.__send_to_subset("ctx_r", U)
+        self.__send_to_subset("proof_r", U)
         self.__send_to_subset("w", U)
+        self.__send_to_subset("c_w", U)
 
     def __sign_2(self, mu: poly, U: Iterable[GKSParticipant], lagrange_x):
         for p, x in zip(U, lagrange_x):
@@ -109,15 +127,25 @@ class GKS(Controller):
     def vrfy(self, mu, u: GKSParticipant, signature: Signature):
         return u.verify_signature(mu, signature)
 
+    def get_message(self):
+        return self.message_space.uniform_element()
+
 
 if __name__ == "__main__":
+    now = time.time()
     gks = GKS(**default_values)
     results = dict()
     participants = gks.KGen()
-    m_sign = gks.BGV.get_message()
-    part = participants[0]
-    signatures = gks.sign(m_sign, participants[: gks.t])
-    print(gks.vrfy(m_sign, participants[0], signatures[0]))
+    print(round(time.time() - now, 6), "seconds")
+    now = time.time()
+    for _ in range(1):
+        m_sign = gks.get_message()
+        part = participants[0]
+        signatures = gks.sign(m_sign, participants[:2])
+        res = gks.vrfy(m_sign, part, signatures[0])
+        results[res] = results.get(res, 0) + 1
+    print(round(time.time() - now, 6), "seconds")
+    print(results)
     print(gks.counter.mult)
     print(gks.counter.mod)
     print(gks.counter.add)

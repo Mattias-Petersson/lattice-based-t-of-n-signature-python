@@ -1,5 +1,7 @@
 from typing import Iterable
+from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP16.RelationProofs import RelationProver
 from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare2 import SecretShare
@@ -13,8 +15,8 @@ class BGV(Controller):
     def __init__(
         self,
         values: BGVValues | None = None,
-        p: int = 2029,
-        q: int = 2**32 - 527,
+        p: int = 34554371,
+        q: int = 3484078194284213,
         N: int = 1024,
         tn: TN | None = None,
     ):
@@ -29,9 +31,8 @@ class BGV(Controller):
             self.t,
             self.n,
         ) = self.__getValues(values, tn)
-
         self.polynomial = self.comm_scheme.polynomial
-        self.message_space = Polynomial(self.counter, self.N, self.p)
+        self.message_space = Polynomial(self.counter, self.q, self.N)
         self.cypari = self.comm_scheme.cypari
 
         super().__init__(self.participants)
@@ -50,20 +51,27 @@ class BGV(Controller):
                 values.comm_scheme,
                 values.secret_share,
                 values.participants,
-                values.t,
-                values.n,
+                *values.tn,
             )
         assert tn is not None
-        t, n = tn
-        comm = BDLOPCommScheme(q=self.q, N=self.N)
-        secrets = SecretShare((t, n), self.q)
+        comm = BDLOPCommScheme(self.counter, q=self.q, N=self.N)
+        secrets = SecretShare(tn, self.q, self.counter)
         part = tuple(
             BGVParticipant(
-                comm, secrets, self.counter, self.q, self.p, self.N, i + 1
+                comm,
+                secrets,
+                RelationProver(BDLOP(comm), comm, secrets),
+                RelationProver(BDLOP(comm), comm, secrets),
+                self.counter,
+                self.q,
+                self.p,
+                1,
+                self.N,
+                i + 1,
             )
-            for i in range(n)
+            for i in range(tn[1])
         )
-        return comm, secrets, part, t, n
+        return comm, secrets, part, *tn
 
     def __compute_b(self):
         """
@@ -86,8 +94,12 @@ class BGV(Controller):
         all of them open successfully.
         """
         self.share_partials("coms_s_bar")
-        self.share_partials("c_s_bar")
-        self.share_partials("c_e_bar")
+        self.recv_share("c_s_bar")
+        self.recv_share("b_bars")
+        self.recv_share("c_e_bar")
+        self.recv_share("c_s")
+        self.recv_share("c_e")
+        self.recv_share("sk_proof")
         for part in self.participants:
             part.check_open()
 

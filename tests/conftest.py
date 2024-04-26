@@ -14,7 +14,7 @@ def comm_scheme():
 
 @pytest.fixture
 def poly(comm_scheme):
-    return Polynomial(comm_scheme.N, comm_scheme.q)
+    return Polynomial(comm_scheme.q, comm_scheme.N)
 
 
 @pytest.fixture

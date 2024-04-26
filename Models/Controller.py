@@ -25,7 +25,7 @@ class Controller(abc.ABC):
 
     def share_data(self, attr, data):
         for i in self.participants:
-            res = tuple(filter(lambda p: p.name != i.name, data))
+            res = tuple(filter(lambda p: True, data))
             i.recv_from_other(attr, res)
 
     def share_partials(self, attr):

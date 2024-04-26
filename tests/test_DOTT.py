@@ -3,7 +3,7 @@ import pytest
 
 from DOTT21.DOTT import DOTT
 from type.classes import CommitOpen
-from Models.values import default_values
+from utils.values import default_values
 
 
 @pytest.fixture(scope="session")

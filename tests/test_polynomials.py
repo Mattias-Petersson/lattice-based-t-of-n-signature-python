@@ -1,11 +1,14 @@
 import numpy as np
+from cypari2.convert import gen_to_python
 
 
 def test_challenge(comm_scheme, poly):
     """
     Verify that a challenge has the proper norms.
     """
-    challenge = poly.pol_to_arr(poly.challenge(kappa=comm_scheme.kappa))
+    challenge = gen_to_python(
+        poly.pol_to_arr(poly.challenge(kappa=comm_scheme.kappa))
+    )
     assert (
         np.linalg.norm(challenge, np.inf) == 1
         and np.linalg.norm(challenge, 1) == comm_scheme.kappa
@@ -16,7 +19,7 @@ def test_small_invertible(comm_scheme, poly):
     """
     The difference of two challenges should have an l_inf norm of at most two.
     """
-    f = poly.pol_to_arr(poly.small_invertible(comm_scheme.kappa))
+    f = gen_to_python(poly.pol_to_arr(poly.small_invertible(comm_scheme.kappa)))
     assert np.linalg.norm(f, np.inf) <= 2
 
 
