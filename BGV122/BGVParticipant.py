@@ -12,7 +12,6 @@ class BGVParticipant(Participant):
         self,
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
-        relation_prover: RelationProver,
         BGV_relation_prover: RelationProver,
         Q: int,
         q: int,
@@ -25,7 +24,6 @@ class BGVParticipant(Participant):
         self.q = q
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
-        self.relation_prover = relation_prover
         self.BGV_relation_prover = BGV_relation_prover
         self.BGV_hash = lambda x: self.BGV_polynomial.hash(
             self.BGV_comm_scheme.kappa, x
@@ -150,8 +148,7 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid sk proof for "
                     + f"user {cs_bar.name}"
                 )
-            if not self.BGV_relation_prover.verify_sk(
-                *proofs.data,
+            self.BGV_relation_prover.verify_sk(
                 b.data,
                 b_bar.data,
                 self.sum_a,
@@ -160,11 +157,8 @@ class BGVParticipant(Participant):
                 ce.data,
                 cs_bar.data,
                 ce_bar.data,
-            ):
-                raise ValueError(
-                    f"Aborting. User {self.name} got an failing sk_proof for "
-                    + f"user {cs_bar.name}"
-                )
+                *proofs.data,
+            )
 
     def generate_final(self):
         self.sum_b = sum(i.data for i in self.others["b"])
@@ -173,11 +167,10 @@ class BGVParticipant(Participant):
         for com in self.others["coms_s_bar"]:
             new_com += com.data.m
             new_r += com.data.r
-        self.c_s_k = (
-            []
-        )  # TODO: Make better with list comprehension (this and 2 rows down)
-        for j in range(self.secret_share.n):
-            self.c_s_k.append(sum(i.data[j] for i in self.others["c_s_bar"]))
+        self.c_s_k = [
+            sum(i.data[j] for i in self.others["c_s_bar"])
+            for j in range(self.secret_share.n)
+        ]
         self.pk = BgvPk(self.sum_a, self.sum_b, self.c_s_k)
         self.sk = BgvSk(self.x, Commit(new_com, new_r))
         return self.pk, self.sk
@@ -218,7 +211,7 @@ class BGVParticipant(Participant):
         d_u = []
         for i in d:
             if not self.BGV_relation_prover.verify_ds(
-                *i[0], self.q, i[1], i[2], i[3]
+                *i[0], p=self.q, com_si=i[1], com_ei=i[2], ds=i[3]
             ):
                 raise ValueError(
                     f"Aborting. User {self.name} got an invalid T_dec proof"

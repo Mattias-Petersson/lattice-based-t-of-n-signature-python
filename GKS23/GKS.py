@@ -101,9 +101,9 @@ class GKS(Controller):
         self.__KGen_step_3()
         return self.__finalize()
 
-    def __sign_1(self, mu: poly, U: Iterable[GKSParticipant]):
+    def __sign_1(self, U: Iterable[GKSParticipant]):
         for p in U:
-            p.sign_1(mu)
+            p.sign_1()
         self.__send_to_subset("ctx_r", U)
         self.__send_to_subset("proof_r", U)
         self.__send_to_subset("w", U)
@@ -117,7 +117,7 @@ class GKS(Controller):
 
     def sign(self, mu: poly, U: Iterable[GKSParticipant]) -> list[Signature]:
         lagrange_x = self.BGV.participant_lagrange(U)
-        self.__sign_1(mu, U)
+        self.__sign_1(U)
         self.__sign_2(mu, U, lagrange_x)
         return [p.generate_signature() for p in U]
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     participants = gks.KGen()
     print(round(time.time() - now, 6), "seconds")
     now = time.time()
-    for _ in range(10):
+    for _ in range(1):
         m_sign = gks.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[:2])
