@@ -144,6 +144,10 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {cs_bar.name}"
                 )
+            """
+            TODO: Make the following reconstruction test every possible subset
+            of b_bar_data. See how reconstruct() in this class does it. 
+            """
             if self.secret_share.reconstruct_poly(b_bar.data) != b.data:
                 raise ValueError(
                     f"Aborting. User {self.name} got an invalid sk proof for "
