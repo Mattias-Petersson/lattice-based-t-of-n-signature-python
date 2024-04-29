@@ -1,209 +1,172 @@
-import numpy as np
+from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
-from BDLOP16.RelationProofs import RelationProver
-from BGV12.BGVParticipant import BGVParticipant
+from BDLOP16.RelationProver import RelationProver
+from Models.CommitmentScheme import CommitmentScheme
+from Models.Controller import Controller
 from SecretSharing.SecretShare import SecretShare
+from BGV12.BGVParticipant import BGVParticipant
+from type.classes import TN, BGVValues, Ctx, NameData, poly
+from utils.values import default_values
 from utils.Polynomial import Polynomial
 
 
-class BGV:
+class BGV(Controller):
     def __init__(
-        self, comm_scheme, ZK, SSS, RP, n=4, t=2, q=2**32 - 527, N=1024, p=2029
+        self,
+        p: int,
+        q: int,
+        N: int,
+        tn: TN | None = None,
+        values: BGVValues | None = None,
     ):
-        self.participants: list[BGVParticipant] = []
-        self.comm_scheme = comm_scheme
-        self.ZK = ZK
-        self.SSS = SSS
-        self.RP = RP
-        self.t = 2
         self.p = p
         self.q = q
-        for i in range(1, n + 1):
-            self.participants.append(
-                BGVParticipant(
-                    t,
-                    n,
-                    0,
-                    p,
-                    q,
-                    N,
-                    i,
-                    comm_scheme,
-                    RP,
-                    SSS,
-                    comm_scheme.cypari,
-                )
-            )
+        self.N = N
+        (
+            self.comm_scheme,
+            self.secret_share,
+            self.participants,
+            self.t,
+            self.n,
+        ) = self.__getValues(values, tn)
+        self.polynomial = self.comm_scheme.polynomial
+        self.message_space = Polynomial(self.p, self.N)
+        self.cypari = self.comm_scheme.cypari
 
-    def keyGen(self):
-        step1 = []
-        for p in self.participants:
-            step1.append(p.step1())
-        haj = []
-        aj = []
-        for i in step1:
-            haj.append(i[0])
-            aj.append(i[1])
-        hbj = []
-        self.sprime = 0
-        for p in self.participants:
-            temp = p.step2(haj, aj)
-            hbj.append(temp[0])
-            self.sprime += temp[1]
-        step3 = []
-        for p in self.participants:
-            step3.append(p.step3(hbj))
-        comsj = []
-        comej = []
-        comsjk = []
-        comejk = []
-        bj = []
-        bjk = []
-        proof_sk = []
-        sjk = []
-        psjk = []
-        for i in step3:
-            comsj.append(i[0])
-            comej.append(i[1])
-            comsjk.append(i[2])
-            comejk.append(i[3])
-            bj.append(i[4])
-            bjk.append(i[5])
-            proof_sk.append(i[6])
-            sjk.append(i[7])
-            psjk.append(i[8])
-        self.bs = bj
-        step4 = []
-        for i in range(len(self.participants)):
-            p = self.participants[i]
-            comek = []
-            bk = []
-            comsk = []
-            sk = []
-            psk = []
-            for j in range(len(self.participants)):
-                comsk.append(comsjk[j][i])
-                bk.append(bjk[j][i])
-                comek.append(comejk[j][i])
-                sk.append(sjk[j][i])
-                psk.append(psjk[j][i])
-            step4.append(
-                p.step4(
-                    comsj, comej, comsjk, comejk, bj, bjk, proof_sk, sk, psk
-                )
+        super().__init__(self.participants)
+
+    def __getValues(
+        self, values: BGVValues | None, tn: TN | None
+    ) -> tuple[
+        CommitmentScheme, SecretShare, tuple[BGVParticipant, ...], int, int
+    ]:
+        if not (values or tn):
+            raise ValueError(
+                "Requires at least a set of values, or a (t, n) tuple"
             )
-        print(
-            bool(self.comm_scheme.polynomial.cypari(step4[0][0] == step4[1][0]))
+        if values:
+            return (
+                values.comm_scheme,
+                values.secret_share,
+                values.participants,
+                *values.tn,
+            )
+        assert tn is not None
+        comm = BDLOPCommScheme(q=self.q, N=self.N)
+        secrets = SecretShare(tn, self.q)
+        part = tuple(
+            BGVParticipant(
+                comm,
+                secrets,
+                RelationProver(BDLOP(comm), comm, secrets),
+                self.q,
+                self.p,
+                1,
+                self.N,
+                i + 1,
+            )
+            for i in range(tn[1])
         )
-        print(
-            bool(self.comm_scheme.polynomial.cypari(step4[0][1] == step4[1][1]))
-        )
-        for i in range(len(step4[0][2])):
-            print(
-                bool(
-                    self.comm_scheme.polynomial.cypari(
-                        step4[0][2][i] == step4[1][2][i]
-                    )
-                )
-            )
-        return step4[0]
+        return comm, secrets, part, *tn
 
-    def TDKGen(self):
-        haj = []
-        aj = []
-        for p in self.participants:
-            temp = p.step5()
-            haj.append(temp[0])
-            aj.append(temp[1])
-        hyj = []
-        for p in self.participants:
-            hyj.append(p.step6(aj, haj))
-        yj = []
-        ctxj = []
-        for p in self.participants:
-            temp = p.step7(hyj)
-            yj.append(temp[0])
-            ctxj.append(temp[1])
-        for p in self.participants:
-            p.step8(yj, ctxj)
+    def __compute_b(self):
+        """
+        Computes b for all participants, shares a hash of b with the others.
+        """
+        for i in self.participants:
+            i.make_b()
+        self.recv_share("b_hash")
 
-    def testTDkeys(self):
-        works = True
-        for i in range(len(self.participants)):
-            for j in range(len(self.participants)):
-                if self.participants[i].pkts[0] != self.participants[j].pkts[0]:
-                    works = False
-                if self.participants[i].pkts[1] != self.participants[j].pkts[1]:
-                    works = False
-        print(works)
+    def __share_b_bar(self):
+        for i in self.participants:
+            i.make_secrets()
+        self.share_partials("b_bar")
 
-    def sign(self, m, U):
-        wj = []
-        ctx_r = []
-        for i in U:
-            temp = self.participants[i].signStep1()
-            wj.append(temp[0])
-            ctx_r.append(temp[1])
-        ret = []
-        for i in U:
-            ret.append(
-                self.participants[i].signStep2(
-                    wj, ctx_r, m, [U[0] + 1, U[1] + 1]
-                )
-            )
-        ds_j = []
-        for i in range(len(U)):
-            temp = []
-            for j in range(len(U)):
-                temp.append(ret[j][i])
-            ds_j.append(temp)
-        res = []
-        for i in U:
-            res.append(self.participants[i].signStep3(ds_j))
-        print("MAJOR TEST")
-        print(res[0][0] == res[1][0])
-        print(res[0][1][0] == res[1][1][0])
-        print(res[0][1][1] == res[1][1][1])
-        return res[0]
+    def __share_commits(self):
+        """
+        Shares the c which is the result of committing a Commit object between
+        all participants. Also shares said object for s_bar between all users.
+        Each participant then looks at their received values and checks if
+        all of them open successfully.
+        """
+        self.share_partials("coms_s_bar")
+        self.recv_share("c_s_bar")
+        self.recv_share("b_bars")
+        self.recv_share("c_e_bar")
+        self.recv_share("c_s")
+        self.recv_share("c_e")
+        self.recv_share("sk_proof")
+        for part in self.participants:
+            part.check_open()
 
-    def run(self):
-        self.keyGen()
-        PH = Polynomial(self.p, 1024)
-        PHq = Polynomial(self.q, 1024)
-        m = PHq.in_rq(PHq.in_rq("1"))
-        m2 = PHq.in_rq(PHq.in_rq("1"))
-        print(m)
-        enc = self.participants[0].enc(m)
-        enc2 = self.participants[0].enc(m2)
-        add_enc = self.participants[0].add_ctx(enc, enc2)
-        mul_enc = self.participants[0].mult_ctx(
-            self.comm_scheme.cypari.Pol("x^2+2"), enc2
-        )
-        t_decs = []
-        for i in range(0, self.t):
-            t_decs.append(
-                self.participants[i].t_dec(*add_enc, range(1, self.t + 1))
-            )
-        ptx = PH.in_rq(self.participants[0].comb(add_enc[1], t_decs))
-        t_decs2 = []
-        for i in range(0, self.t):
-            t_decs2.append(
-                self.participants[i].t_dec(*mul_enc, range(1, self.t + 1))
-            )
-        ptx2 = PH.in_rq(self.participants[0].comb(mul_enc[1], t_decs2))
-        self.TDKGen()
-        self.testTDkeys()
-        sign = self.sign(m, [0, 1])
-        print(self.participants[0].verify(sign[0], sign[1], m))
-        print(ptx)
-        print(ptx2)
-        return bool(m + m2 == ptx)
+    def __broadcast(self):
+        """
+        Broadcasts user-specific values between all participants.
+        """
+        self.recv_share("c_s")
+        self.recv_share("c_e")
+        self.recv_share("b")
 
+    def __recreate(self):
+        """
+        Asserts that for all users, their b can be reconstructed from b_bars.
+        All combinations are tested for by each participant.
+        """
+        data = self.recv_value_shared("b_bar")
+        recreated = dict()
+        for i in data:
+            for j in i.data:
+                recreated[j.name] = recreated.get(j.name, []) + [
+                    NameData(i.name, j.data)
+                ]
+        for i in self.participants:
+            i.reconstruct(recreated[i.name], self.t)
 
-c = BDLOPCommScheme()
-zk = BDLOP(c)
-s = SecretShare((2, 4), 2**32 - 527)
-r = RelationProver(zk, c, s)
-bgv = BGV(c, zk, s, r)
-print(bgv.run())
+    def __check_equiv(self, attr) -> poly:
+        all_attr = [getattr(i, attr) for i in self.participants]
+        if len(set(all_attr)) != 1:
+            raise ValueError(f"Users did not get matching values for {attr}")
+        return all_attr.pop()
+
+    def __finalize(self):
+        for part in self.participants:
+            part.generate_final()
+        self.__check_equiv("sum_a")
+        self.__check_equiv("sum_b")
+        return self.participants
+
+    def DKGen(self):
+        """
+        Key generation method, if any of the methods return false they will
+        throw an error. If all succeed we return a public key and a secret key
+        for each participant.
+        """
+        self.assert_value_matches_hash("a")
+        self.__compute_b()
+        self.__share_b_bar()
+        self.__broadcast()
+        self.assert_value_matches_hash("b")
+        self.__recreate()
+        self.__share_commits()
+        return self.__finalize()
+
+    def enc(self, u: BGVParticipant, m: poly) -> Ctx:
+        return u.enc(m)
+
+    def dec(self, sk, ctx: Ctx):
+        return NotImplementedError("Not implemented for this version.")
+
+    def participant_lagrange(self, U: Iterable[BGVParticipant]) -> list[int]:
+        return self.secret_share.lagrange([i.x for i in U])
+
+    def t_dec(self, U: Iterable[BGVParticipant], ctx: Ctx):
+        x_list = self.participant_lagrange(U)
+        d = [part.t_dec(ctx, x) for part, x in zip(U, x_list)]
+        return d
+
+    def comb(self, u: BGVParticipant, ctx: Ctx, d: list):
+        return u.comb(ctx, d)
+
+    def get_message(self):
+        return self.message_space.uniform_element()

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import NameData
 
 

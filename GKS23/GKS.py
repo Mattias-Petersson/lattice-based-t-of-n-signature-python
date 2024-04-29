@@ -2,14 +2,14 @@ import time
 from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
-from BDLOP16.RelationProofs import RelationProver
-from BGV122.BGV import BGV
+from BDLOP16.RelationProver import RelationProver
+from BGV12.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
 from Models.Controller import Controller
-from utils.values import default_values
-from SecretSharing.SecretShare2 import SecretShare
-from type.classes import TN, BGVValues, Signature, poly
+from utils.values import default_values, Q
 from utils.Polynomial import Polynomial
+from SecretSharing.SecretShare import SecretShare
+from type.classes import TN, BGVValues, Signature, poly
 
 
 class GKS(Controller):
@@ -62,7 +62,7 @@ class GKS(Controller):
         bgv_values = BGVValues(
             self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(bgv_values, q, Q, N)
+        self.BGV = BGV(q, Q, N, values=bgv_values)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -130,7 +130,7 @@ class GKS(Controller):
 
 if __name__ == "__main__":
     now = time.time()
-    gks = GKS(**default_values)
+    gks = GKS(Q, **default_values)
     results = dict()
     participants = gks.KGen()
     print(round(time.time() - now, 6), "seconds")

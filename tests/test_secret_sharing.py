@@ -2,7 +2,7 @@ import itertools
 import pytest
 import numpy as np
 
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import SecretSharePoly
 
 
@@ -24,7 +24,7 @@ def test_valid_restructuring(secret_share, poly):
     """
     p1 = poly.uniform_element()
     r = secret_share.share_poly(p1)
-    p2 = secret_share.reconstruct_poly(r[:2])
+    p2 = secret_share.reconstruct_poly(r[: secret_share.t])
     assert p1 == p2
 
 

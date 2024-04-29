@@ -31,8 +31,9 @@ class DOTT(CommitmentScheme):
         super().__init__(q, N, 49)
         self.s = self.N ** (3 / 2) * math.log2(self.N)
         self.s_bar = self.N
-        self.k, self.l = 6, 5
-        self.w = math.ceil(math.log2(self.q))
+        log2_q = math.ceil(math.log2(self.q))
+        self.k, self.l = 6, log2_q
+        self.w = log2_q
 
         self.B = make_B()
         self.Â = self.__make_A((2, self.l + 2 * self.w))
@@ -67,7 +68,7 @@ class DOTT(CommitmentScheme):
             self.l + 2 * self.w, self.s, self.B
         )
 
-    def commit(self, c: Commit):
+    def commit(self, commit: Commit):
         """
         Commits to an x in R_q and returns Â * r + [0 x]~
 
@@ -78,10 +79,10 @@ class DOTT(CommitmentScheme):
         Returns:
         A commitment c from x, r.
         """
-        Ar, zeroes = self.__Ar_with_msg(c)
+        Ar, zeroes = self.__Ar_with_msg(commit)
         return Ar + zeroes
 
-    def open(self, com: CommitOpen) -> bool:
+    def open(self, commit_open: CommitOpen) -> bool:
         """
         Returns whether the commitment c matches the randomness
         r and message m that was sent in via the com object.
@@ -93,11 +94,11 @@ class DOTT(CommitmentScheme):
         Returns:
         True if the commitment was valid, False otherwise.
         """
-        for r in com.r:
+        for r in commit_open.r:
             if self.polynomial.l2_norm(r) > self.B:
                 return False
-        Ar, zeroes = self.__Ar_with_msg(com)
-        return com.c == Ar + zeroes
+        Ar, zeroes = self.__Ar_with_msg(commit_open)
+        return commit_open.c == Ar + zeroes
 
     def tc_gen(self):
         """
@@ -109,13 +110,12 @@ class DOTT(CommitmentScheme):
         """
 
         def make_G() -> list:
-            concat = lambda lst1, lst2: self.cypari.concat(lst1, lst2)
             range_w = range(self.w)
             powers_of_two_pol = [i**2 for i in range_w]
             zeroes_pol = [0 for _ in range_w]
 
-            row_one = concat(powers_of_two_pol, zeroes_pol)
-            row_two = concat(zeroes_pol, powers_of_two_pol)
+            row_one = self.cypari.concat(powers_of_two_pol, zeroes_pol)
+            row_two = self.cypari.concat(zeroes_pol, powers_of_two_pol)
 
             return self.cypari.matrix(2, 2 * self.w, (*row_one, *row_two))
 

@@ -15,7 +15,7 @@ class BDLOPCommScheme(CommitmentScheme):
         sbeta: int = 1,
         kappa: int = 36,
         q: int = 2**32 - 527,
-        N: int = 1024,
+        N: int = 2**10,
     ):
         def __make_A1():
             A1_prime = self.polynomial.uniform_array((n, k - n))
@@ -78,16 +78,16 @@ class BDLOPCommScheme(CommitmentScheme):
     def honest_func(self):
         return 1
 
-    def commit(self, c: Commit) -> list[cypari2.gen.Gen]:
-        Ar, zerox = self.__a_with_message(c)
+    def commit(self, commit: Commit) -> list[cypari2.gen.Gen]:
+        Ar, zerox = self.__a_with_message(commit)
         return Ar + zerox
 
-    def open(self, open: CommitOpen) -> bool:
-        Ar, zerox = self.__a_with_message(open)
-        fz = open.f * zerox
+    def open(self, commit_open: CommitOpen) -> bool:
+        Ar, zerox = self.__a_with_message(commit_open)
+        fz = commit_open.f * zerox
 
         rhs = Ar + fz
-        lhs = open.f * open.c
+        lhs = commit_open.f * commit_open.c
         return lhs == rhs
 
     def get_commit(self) -> tuple[Commit, list]:
@@ -100,18 +100,3 @@ class BDLOPCommScheme(CommitmentScheme):
         )
         c = self.commit(commit)
         return commit, c
-
-
-if __name__ == "__main__":
-    start = time.time()
-    comm = BDLOPCommScheme()
-    open = dict()
-    for i in range(100):
-        commit: Commit = Commit(
-            m=comm.polynomial.uniform_array(comm.l), r=comm.r_commit()
-        )
-        c = comm.commit(commit)
-        opened = comm.open(CommitOpen(c, commit))
-        open[opened] = open.get(opened, 0) + 1
-    print(open)
-    print("Total execution time: %s seconds" % (round(time.time() - start, 4)))

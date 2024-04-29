@@ -1,7 +1,7 @@
 from BDLOP16.BDLOP import BDLOP
 from Models.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpenLinear
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 
 
 class RelationProver:
@@ -106,18 +106,17 @@ class RelationProver:
         self.__verify_sum("Sk", proof, *rest)
         self.__verify_open("Com_s", coms[0][0], proof2)
         self.__verify_open("Com_e", come[0][0], proof3)
-
-        for i in range(len(bis)):
-            comb_i = self.__commit_r0(bis[i][1])
-            proof, *rest = proofs3[i]
+        for idx, data in enumerate(bis):
+            comb_i = self.__commit_r0(data[1])
+            proof, *rest = proofs3[idx]
             proof = self.__make_proof_open_linear(
-                [comsis[i], a, proof[0]],
-                [comeis[i], p, proof[1]],
+                [comsis[idx], a, proof[0]],
+                [comeis[idx], p, proof[1]],
                 [comb_i, 1, proof[2]],
             )
             self.__verify_sum("Com_s, Com_e, Com_b", proof, *rest)
-            self.__verify_open("Com_s", comsis[i][0][0], proofs1[i])
-            self.__verify_open("Com_e", comeis[i][0][0], proofs2[i])
+            self.__verify_open("Com_s", comsis[idx][0][0], proofs1[idx])
+            self.__verify_open("Com_e", comeis[idx][0][0], proofs2[idx])
 
     def prove_enc(self, r, m, eprime, ebis, a, b, p):
         com_r, com_m = self.__commit_obj_r_com(r, m)
@@ -196,8 +195,8 @@ class RelationProver:
             self.comm_scheme.commit(r1),
         )
 
-    def verify_s(self, a_vec, sum, proof, rc0, rc1):
-        com_sum = self.__commit_r0(sum)
+    def verify_s(self, a_vec, sum_y, proof, rc0, rc1):
+        com_sum = self.__commit_r0(sum_y)
         proof, *rest = proof
         proof = self.__make_proof_open_linear(
             [rc0, a_vec[0], proof[0]],

@@ -1,7 +1,7 @@
-from BDLOP16.RelationProofs import RelationProver
-from BGV122.BGVParticipant import BGVParticipant
+from BDLOP16.RelationProver import RelationProver
+from BGV12.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, Ctx, GksPk, Signature, poly
 
 
@@ -36,8 +36,8 @@ class GKSParticipant(BGVParticipant):
         self.a_ts = self.polynomial.uniform_element()
         self.a_ts_hash = self.hash(self.a_ts)
 
-    def hash(self, m):
-        return self.polynomial.hash(self.comm_scheme.kappa, m)
+    def hash(self, x):
+        return self.polynomial.hash(self.comm_scheme.kappa, x)
 
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data

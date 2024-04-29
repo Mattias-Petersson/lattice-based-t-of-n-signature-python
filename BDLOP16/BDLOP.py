@@ -1,4 +1,6 @@
 import math
+import time
+import cypari2
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import (
     Commit,
@@ -6,8 +8,6 @@ from type.classes import (
     ProofOfSpecificOpen,
     ProofOfOpenLinear,
 )
-import time
-import cypari2
 
 
 class BDLOP:
@@ -291,35 +291,3 @@ def proof_of_sum(comm_scheme: BDLOPCommScheme, ZK: BDLOP):
     )
     open = ZK.verify_proof_of_sum(proof, u)
     return open
-
-
-def main():
-    comm_scheme = BDLOPCommScheme()
-    ZK = BDLOP(comm_scheme)
-    proofs = dict()
-    clock = time.time()
-    for _ in range(100):
-        open = proof_of_open(comm_scheme, ZK)
-        proofs[open] = proofs.get(open, 0) + 1
-    print("Opening time: ", time.time() - clock)
-    clock = time.time()
-    for _ in range(100):
-        open = proof_of_specific_open(comm_scheme, ZK)
-        proofs[open] = proofs.get(open, 0) + 1
-    print("Specific opening time: ", time.time() - clock)
-    clock = time.time()
-    for _ in range(100):
-        open = linear_relation(comm_scheme, ZK)
-        proofs[open] = proofs.get(open, 0) + 1
-    print("Linear Relation time: ", time.time() - clock)
-    clock = time.time()
-    for _ in range(100):
-        open = proof_of_sum(comm_scheme, ZK)
-        proofs[open] = proofs.get(open, 0) + 1
-    print("Sum time: ", time.time() - clock)
-    clock = time.time()
-    print(proofs)
-
-
-if __name__ == "__main__":
-    main()

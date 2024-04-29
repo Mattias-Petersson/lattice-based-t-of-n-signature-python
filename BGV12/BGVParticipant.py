@@ -1,413 +1,226 @@
+import itertools
 import numpy as np
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
-from BDLOP16.RelationProofs import RelationProver
+from BDLOP16.RelationProver import RelationProver
+from Models.CommitmentScheme import CommitmentScheme
+from Models.Participant import Participant
 from SecretSharing.SecretShare import SecretShare
-from type.classes import Commit, CommitOpen, ProofOfOpenLinear
-from utils.Polynomial import Polynomial
+from type.classes import Commit, CommitOpen, Ctx, BgvPk, SecretSharePoly, BgvSk
 
 
-class BGVParticipant:
+class BGVParticipant(Participant):
     def __init__(
         self,
-        t,
-        n,
-        d,
-        p,
-        q,
-        N,
-        i,
-        comm_scheme: BDLOPCommScheme,
-        RelationProofs: RelationProver,
-        SSS: SecretShare,
-        cypari,
+        comm_scheme: CommitmentScheme,
+        secret_share: SecretShare,
+        BGV_relation_prover: RelationProver,
+        Q: int,
+        q: int,
+        p: int,
+        N: int,
+        x: int,
     ):
-        if i > n:
-            raise ValueError()
-        self.t = t  # Threshold
-        self.n = n  # Participants
-        self.d = d  #
-        self.p = p  # prime much smaller than q
-        self.q = q  # prime modulo
-        self.N = N  # length of polynomials
-        self.i = i
-        self.PH = Polynomial(q, N)
-        self.SSS = SSS
-        self.cypari = cypari
-        self.comm_scheme = comm_scheme
-        self.RP = RelationProofs
-        self.PHp = Polynomial(self.p, 1024)
-
-    def step1(self):
-        ai = self.PH.uniform_array(1)
-        hai = hash(ai)
-        return (hai, ai)
-
-    def step2(self, haj, aj):
-        for i in range(len(haj)):
-            if haj[i] != hash(aj[i]):
-                raise RuntimeError(str(i))
-        self.a = 0
-        for i in aj:
-            self.a = self.a + i
-        self.siprime = self.PH.gaussian_array(1, 1)
-        self.eiprime = self.PH.gaussian_array(1, 1)
-        self.bi = self.a * self.siprime + self.p * self.eiprime
-        hbi = hash(self.bi)
-        return (hbi, self.siprime, self.bi)
-
-    def step3(self, hbj):
-        self.hbj = hbj
-        psiprime = self.comm_scheme.r_commit()
-        peiprime = self.comm_scheme.r_commit()
-        self.comsi = self.comm_scheme.commit(Commit(self.siprime, psiprime))
-        self.comei = self.comm_scheme.commit(Commit(self.eiprime, peiprime))
-        sij = self.SSS.share_poly(self.siprime)
-        eij = self.SSS.share_poly(self.eiprime)
-        psij = []
-        peij = []
-        comsij = []
-        comeij = []
-        bij = []
-        for i in range(self.n):
-            ps = self.comm_scheme.r_commit()
-            pe = self.comm_scheme.r_commit()
-            psij.append(ps)
-            comsij.append(self.comm_scheme.commit(Commit(sij[i], ps)))
-            peij.append(pe)
-            comeij.append(self.comm_scheme.commit(Commit(eij[i], pe)))
-            bij.append(self.a * sij[i] + self.p * eij[i])
-        proof_sk = self.RP.prove_sk(
-            psiprime, peiprime, psij, peij, self.a, self.p
+        super().__init__(secret_share, Q, q, p, N, x)
+        self.Q = Q
+        self.q = q
+        self.BGV_comm_scheme = comm_scheme
+        self.BGV_polynomial = self.BGV_comm_scheme.polynomial
+        self.BGV_relation_prover = BGV_relation_prover
+        self.BGV_hash = lambda x: self.BGV_polynomial.hash(
+            self.BGV_comm_scheme.kappa, x
         )
-        return (
-            self.comsi,
-            self.comei,
-            comsij,
-            comeij,
-            self.bi,
-            bij,
-            proof_sk,
-            sij,
-            psij,
+        # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.kappa = 39
+        self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
+        self.a = self.BGV_polynomial.uniform_element()
+        self.cypari = self.BGV_polynomial.cypari
+        self.a_hash = self.BGV_hash(self.a)
+
+    def hash(self, x):
+        return self.BGV_hash(x)
+
+    def make_b(self):
+        self.sum_a = sum(i.data for i in self.others["a"])
+        self.s, self.e = self.ternary(), self.ternary()
+
+        self.com_s = self.__commit(self.s)
+        self.c_s = self.BGV_comm_scheme.commit(self.com_s)
+
+        self.com_e = self.__commit(self.e)
+        self.c_e = self.BGV_comm_scheme.commit(self.com_e)
+
+        self.b = self.sum_a * self.s + self.q * self.e
+        self.b_hash = self.BGV_hash(self.b)
+
+    def __commit(self, commitment):
+        """
+        Returns a commit object of the commitment and a randomness r. Can
+        be used to commit with a commitment scheme and return c.
+        """
+        return Commit(commitment, self.BGV_comm_scheme.r_commit())
+
+    def make_secrets(self):
+        def to_tuple(attr):
+            return tuple(vals[attr])
+
+        def add_val(name, val):
+            return vals.get(name, []) + [val]
+
+        def make_b(s, e):
+            if s.x != e.x:
+                raise ValueError()
+            return SecretSharePoly(s.x, self.sum_a * s.p + self.q * e.p)
+
+        self.s_bar = self.secret_share.share_poly(self.s)
+        self.e_bar = self.secret_share.share_poly(self.e)
+        vals = dict()
+        c_s_bars = []
+        c_e_bars = []
+        s_rs = []
+        e_rs = []
+        for s, e in zip(self.s_bar, self.e_bar):
+            vals["b_bar"] = add_val("b_bar", make_b(s, e))
+            com_s_bar = self.__commit(s.p)
+            vals["coms_s_bar"] = add_val("coms_s_bar", com_s_bar)
+            c_s_bars.append(self.BGV_comm_scheme.commit(com_s_bar))
+            com_e_bar = self.__commit(e.p)
+            c_e_bars.append(self.BGV_comm_scheme.commit(com_e_bar))
+            s_rs.append(com_s_bar.r)
+            e_rs.append(com_e_bar.r)
+
+        self.sk_proof = self.BGV_relation_prover.prove_sk(
+            self.com_s.r,
+            self.com_e.r,
+            s_rs,
+            e_rs,
+            self.sum_a,
+            self.q,
         )
+        self.b_bar = to_tuple(
+            "b_bar"
+        )  # only shares partially, each part to who should get it
+        self.b_bars = to_tuple("b_bar")  # shares all parts to everyone
+        self.coms_s_bar = to_tuple("coms_s_bar")
+        self.c_s_bar = c_s_bars
+        self.c_e_bar = c_e_bars
 
-    def step4(
-        self,
-        comsj,
-        comej,
-        comsjk,
-        comejk,
-        bj,
-        bjk,
-        proofs_sk,
-        sji,
-        psji,
-    ):
-        for j in range(self.n):
-            if j != self.i - 1:
-                if self.hbj[j] != hash(bj[j]):
-                    raise RuntimeError(str(j) + " wrongHash")
-                smaller_bjk = []
-                for k in range(self.t):
-                    smaller_bjk.append(bjk[j][k])
-                if bj[j] != self.SSS.reconstruct_poly(
-                    smaller_bjk, range(1, self.t + 1)
-                ):
-                    raise RuntimeError(str(j))
-                if not self.comm_scheme.open(
-                    CommitOpen(
-                        c=comsjk[j][self.i - 1], f=1, m=sji[j], r=psji[j]
-                    )
-                ):
-                    raise RuntimeError(str(j))
-                if not self.RP.verify_sk(
-                    *(proofs_sk[j]),
-                    bj[j],
-                    bjk[j],
-                    self.a,
-                    self.p,
-                    comsj[j],
-                    comej[j],
-                    comsjk[j],
-                    comejk[j],
-                ):
-                    raise RuntimeError(str(j))
-        b = 0
-        si = 0
-        psi = 0
-        for j in range(self.n):
-            b = b + bj[j]
-            si = si + sji[j]
-            psi = psi + psji[j]
-        comsk = []
-        for i in range(self.n):
-            temp = 0
-            for j in range(self.n):
-                temp = temp + comsjk[i][j]
-            comsk.append(temp)
-        self.b = b
-        self.pk = (self.a, self.b, comsk)
-        self.ski = (si, psi)
-        return self.pk
-
-    def step5(self):
-        ai = self.PH.uniform_array(1)
-        hai = hash(ai)
-        return (hai, ai)
-
-    def step6(self, aj, haj):
-        a = 0
-        for j in range(len(aj)):
-            if hash(aj[j]) != haj[j]:
-                raise ValueError(j)
-            a += aj[j]
-        self.ats = [a, 1]
-        si1 = self.PHp.gaussian_array(1, 4)
-        si2 = self.PHp.gaussian_array(1, 4)
-        self.si = [
-            si1,
-            si2,
-        ]
-        yi = [
-            self.ats[0] * si1,
-            si2,
-        ]
-        self.yi = sum(yi)
-        return hash(self.yi)
-
-    def step7(self, hyj):
-        self.hyj = hyj
-        ctx_si = [
-            self.enc(self.si[0]),
-            self.enc(self.si[1]),
-        ]
-        return (self.yi, ctx_si)
-
-    def step8(self, yj, ctx_sj):
-        self.y = sum(yj)
-        self.ctx_s = [0, 0]
-        for j in range(len(yj)):
-            if hash(yj[j]) != self.hyj[j]:
-                raise ValueError(j)
-            # TODO: verify proof_sj
-            self.ctx_s = [
-                self.add_ctx(self.ctx_s[0], ctx_sj[j][0]),
-                self.add_ctx(self.ctx_s[1], ctx_sj[j][1]),
-            ]
-        self.pkts = (self.ats, self.y)
-        return self.pkts
-
-    def signStep1(self):
-        ri1 = self.PHp.gaussian_array(1, 4)
-        ri2 = self.PHp.gaussian_array(1, 4)
-        wi = self.ats[0] * ri1 + self.ats[1] * ri2
-        ctxri = [
-            self.enc(ri1),
-            self.enc(ri2),
-        ]
-        return (wi, ctxri)
-
-    def signStep2(self, wj, ctxrj, m, U):
-        self.w = sum(wj)
-        self.ctx_r = [0, 0]
-        for i in range(len(wj)):
-            self.ctx_r = [
-                self.add_ctx(self.ctx_r[0], ctxrj[i][0]),
-                self.add_ctx(self.ctx_r[1], ctxrj[i][1]),
-            ]
-        self.c = self.RP.ZK.d_sigma(
-            self.comm_scheme.cypari.Pol(
-                self.comm_scheme.cypari.Vec(
-                    self.comm_scheme.cypari.liftall(self.w)
+    def reconstruct(self, data, t):
+        """
+        Attempts to reconstruct this participant's own b, using the shares
+        provided to them from the BGV class in the data param. All possible
+        combinations are tried, as all should return true. If any combination
+        returns false we print out the user for which the process failed, and
+        which key shares were responsible.
+        """
+        combs = list(itertools.combinations(data, t))
+        for c in combs:
+            pol = self.secret_share.reconstruct_poly([i.data for i in c])
+            if pol != self.b:
+                raise ValueError(
+                    f"Aborting. Reconstructing b failed for user {self.name}"
+                    + f", reconstructing polynomials for users: {[i.name for i in c]}",
                 )
-            ),
-            self.pkts[0],
-            m,
-        )
-        self.ctx_z = [
-            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[0]), self.ctx_r[0]),
-            self.add_ctx(self.mult_ctx(self.c, self.ctx_s[1]), self.ctx_r[1]),
-        ]
-        ds_i = [
-            self.t_dec(*self.ctx_z[0], U),
-            self.t_dec(*self.ctx_z[1], U),
-        ]
-        return ds_i
 
-    def signStep3(self, ds_j):
-        z = [
-            self.comb(self.ctx_z[0][1], ds_j[0]),
-            self.comb(self.ctx_z[1][1], ds_j[1]),
-        ]
-        print("Z")
-        print(z[0])
-        return (self.c, z)
-
-    def verify(self, c, z, m):
-        q = self.ats[0] * z[0] + self.ats[1] * z[1] - (c * self.y)
-        if c - self.PHp.in_rq(
-            self.RP.ZK.d_sigma(
-                self.comm_scheme.cypari.Pol(
-                    self.comm_scheme.cypari.Vec(
-                        self.comm_scheme.cypari.liftall(q)
-                    )
-                ),
-                self.pkts[0],
-                m,
-            )
-        ) == self.PHp.in_rq("0"):
-            return True
-        return False
-
-    def enc(self, m):
-        eprime = self.PH.gaussian_array(1, 1)
-        ebis = self.PH.gaussian_array(1, 1)
-        mprime = self.cypari.liftall(m) * self.cypari.Mod(1, self.q)
-        r = self.PH.gaussian_array(1, 1)
-        peprime = self.comm_scheme.r_commit()
-        pebis = self.comm_scheme.r_commit()
-        pr = self.comm_scheme.r_commit()
-        pm = self.comm_scheme.r_commit()
-        com_eprime = self.comm_scheme.commit(Commit(eprime, peprime))
-        com_ebis = self.comm_scheme.commit(Commit(ebis, pebis))
-        com_r = self.comm_scheme.commit(Commit(r, pr))
-        com_m = self.comm_scheme.commit(Commit(mprime, pm))
-        u = self.a * r + self.p * eprime
-        v = self.b * r + self.p * ebis + mprime
-        proof_ctx = self.RP.prove_enc(
-            pr, pm, peprime, pebis, self.a, self.b, self.p
-        )
-        return (u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis)
-
-    def dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, sk):
-        if not self.RP.verify_enc(
-            *proof_ctx,
-            self.a,
-            self.b,
-            self.p,
-            u,
-            v,
-            com_r,
-            com_m,
-            com_eprime,
-            com_ebis,
+    def check_open(self):
+        for cs, ce, cs_bar, ce_bar, com, b, b_bar, proofs in zip(
+            self.others["c_s"],
+            self.others["c_e"],
+            self.others["c_s_bar"],
+            self.others["c_e_bar"],
+            self.others["coms_s_bar"],
+            self.others["b"],
+            self.others["b_bars"],
+            self.others["sk_proof"],
         ):
-            return 0
-        ptx = v - sk * u
-        ptx = self.cypari.liftall(
-            ptx
-            + self.cypari.Pol(
-                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
+            if cs_bar.name != com.name:
+                raise ValueError(
+                    "Aborting. Name mismatch for participants."
+                    + f"{self.name}: {cs_bar.name, com.name}"
+                )
+
+            if not self.BGV_comm_scheme.open(
+                CommitOpen(cs_bar.data[self.x - 1], com.data)
+            ):
+                raise ValueError(
+                    f"Aborting. User {self.name} got an invalid opening for "
+                    + f"user {cs_bar.name}"
+                )
+            if self.secret_share.reconstruct_poly(b_bar.data) != b.data:
+                raise ValueError(
+                    f"Aborting. User {self.name} got an invalid sk proof for "
+                    + f"user {cs_bar.name}"
+                )
+            self.BGV_relation_prover.verify_sk(
+                b.data,
+                b_bar.data,
+                self.sum_a,
+                self.q,
+                cs.data,
+                ce.data,
+                cs_bar.data,
+                ce_bar.data,
+                *proofs.data,
             )
-        ) * self.cypari.Mod(1, self.p)
-        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
-        return ptx
 
-    def t_dec(self, u, v, proof_ctx, com_r, com_m, com_eprime, com_ebis, U):
-        # if not self.RP.verify_enc(
-        #     *proof_ctx,
-        #     self.a,
-        #     self.b,
-        #     self.p,
-        #     u,
-        #     v,
-        #     com_r,
-        #     com_m,
-        #     com_eprime,
-        #     com_ebis,
-        # ):
-        #     #print("fail")
-        #     # raise ValueError()
-        # else:
-        #     #print("success")
-        lagrange = 1
-        for j in U:
-            if j != self.i:
-                lagrange *= j * pow((j - self.i), self.q - 2, self.q)
-        m_i = lagrange * self.ski[0] * u
-        E_i = self.PH.uniform_array(1, 2)
-        d_i = m_i + self.p * E_i
-        pE_i = self.comm_scheme.r_commit()
-        com_Ei = self.comm_scheme.commit(Commit(E_i, pE_i))
-        proof_dsi = self.RP.prove_ds(self.ski[1], pE_i, u, lagrange, self.p)
+    def generate_final(self):
+        self.sum_b = sum(i.data for i in self.others["b"])
+        new_com = 0
+        new_r = 0
+        for com in self.others["coms_s_bar"]:
+            new_com += com.data.m
+            new_r += com.data.r
+        self.c_s_k = [
+            sum(i.data[j] for i in self.others["c_s_bar"])
+            for j in range(self.secret_share.n)
+        ]
+        self.pk = BgvPk(self.sum_a, self.sum_b, self.c_s_k)
+        self.sk = BgvSk(self.x, Commit(new_com, new_r))
+        return self.pk, self.sk
+
+    def enc(self, m) -> Ctx:
+        r, e_prime, e_bis = self.BGV_polynomial.gaussian_array(3, 1)
+        mprime = self.cypari.liftall(m)
+        u = self.sum_a * r + self.q * e_prime
+        v = self.sum_b * r + self.q * e_bis + mprime
+        proof = self.BGV_relation_prover.prove_enc(
+            r,
+            self.BGV_polynomial.in_rq(mprime),
+            e_prime,
+            e_bis,
+            self.sum_a,
+            self.sum_b,
+            self.q,
+        )
+        return Ctx(u, v, proof)
+
+    def t_dec(self, ctx: Ctx, x: int):
+
+        m = self.sk.commit.m * ctx.u * x
+        e = self.BGV_polynomial.uniform_element(2)
+        u = m + self.q * e
+        com_e = self.__commit(e)
+        ds_proof = self.BGV_relation_prover.prove_ds(
+            self.sk.commit.r, com_e.r, ctx.u, x, self.q
+        )
         return (
-            proof_dsi,
-            self.comm_scheme.commit(Commit(self.ski[0], self.ski[1])),
-            com_Ei,
-            d_i,
+            ds_proof,
+            self.BGV_comm_scheme.commit(self.sk.commit),
+            self.BGV_comm_scheme.commit(com_e),
+            u,
         )
 
-    def comb(self, v, t_decs):
-        for i in t_decs:
-            if not self.RP.verify_ds(*(i[0]), self.p, i[1], i[2], i[3]):
-                raise ValueError
-        sum_ds = 0
-        for i in t_decs:
-            sum_ds = sum_ds + i[3]
-        ptx = self.cypari.liftall(
-            v
-            - sum_ds
-            + self.cypari.Pol(
-                self.cypari.round(np.ones(1024) * ((self.q - 1) / 2))
+    def comb(self, ctx, d: list):
+        d_u = []
+        for i in d:
+            self.BGV_relation_prover.verify_ds(
+                *i[0], p=self.q, com_si=i[1], com_ei=i[2], ds=i[3]
             )
-        ) * self.cypari.Mod(1, self.p)
-        ptx -= self.cypari.Pol(self.cypari.round(np.ones(1024) * (1958)))
+            d_u.append(i[3])
+        round_and_pol = lambda x: self.cypari.Pol(self.cypari.round(x))
+        Q_half = (self.Q - 1) / 2
+        Q_half_q = Q_half % self.q
+        helper_array = round_and_pol(np.ones(self.N) * Q_half)
+        ptx = self.cypari.liftall(
+            ctx.v - sum(d_u) + helper_array
+        ) * self.cypari.Mod(1, self.q)
+        ptx -= round_and_pol(np.ones(self.N) * (Q_half_q))
         return ptx
-
-    def comb_in_q(self, v, t_decs):
-        for i in t_decs:
-            if not self.RP.verify_ds(*(i[0]), self.p, i[1], i[2], i[3]):
-                raise ValueError
-        sum_ds = 0
-        for i in t_decs:
-            sum_ds = sum_ds + i[3]
-        ptx = v - sum_ds
-        return ptx
-
-    def add_ctx(self, ctx1, ctx2):
-        if ctx1 == 0:
-            return ctx2
-        if ctx2 == 0:
-            return ctx1
-        return (
-            ctx1[0] + ctx2[0],
-            ctx1[1] + ctx2[1],
-            self.__add_encProof(ctx1[2], ctx2[2]),
-            ctx1[3] + ctx2[3],
-            ctx1[4] + ctx2[4],
-            ctx1[5] + ctx2[5],
-            ctx1[6] + ctx2[6],
-        )
-
-    def mult_ctx(self, val, ctx):
-        return (
-            val * ctx[0],
-            val * ctx[1],
-            ctx[2],
-            ctx[3],
-            ctx[4],
-            ctx[5],
-            ctx[6],
-        )
-
-    def __add_encProof(self, arr1, arr2):
-        res = []
-        for i in range(len(arr1)):
-            if i < 2:
-                res.append(self.__add_elementwise(arr1[i], arr2[i]))
-            else:
-                res.append(arr1[i] + arr2[i])
-        return res
-
-    def __add_elementwise(self, arr1, arr2):
-        res = []
-        for i in range(len(arr1)):
-            res.append(arr1[i] + arr2[i])
-        return res
-
-    def __Rq_to_Rp(self, v):
-        return self.cypari.liftall(
-            v + self.cypari.Pol(self.cypari.round(np.ones(1024) * (1000)))
-        ) * self.cypari.Mod(1, self.p) - self.cypari.Pol(
-            self.cypari.round(np.ones(1024) * (1000))
-        )
