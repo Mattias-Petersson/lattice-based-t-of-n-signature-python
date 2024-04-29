@@ -1,5 +1,4 @@
 import math
-import time
 import cypari2
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import (

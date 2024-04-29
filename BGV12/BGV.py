@@ -7,7 +7,6 @@ from Models.Controller import Controller
 from SecretSharing.SecretShare import SecretShare
 from BGV12.BGVParticipant import BGVParticipant
 from type.classes import TN, BGVValues, Ctx, NameData, poly
-from utils.values import default_values
 from utils.Polynomial import Polynomial
 
 

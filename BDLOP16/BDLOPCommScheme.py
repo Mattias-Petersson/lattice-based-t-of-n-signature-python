@@ -1,5 +1,4 @@
 import math
-import time
 import cypari2
 from Models.CommitmentScheme import CommitmentScheme
 from utils.Polynomial import Polynomial
