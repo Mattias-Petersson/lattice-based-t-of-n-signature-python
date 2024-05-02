@@ -212,9 +212,7 @@ class RelationProver:
         proof1 = self.ZK.proof_of_sum(
             r0.r, r1.r, sum_random, a_vec[0], a_vec[1], 1
         )
-        proof2 = self.ZK.proof_of_opening(
-            sum_random
-        )  # This should be a proof of trapdoor opening
+        proof2 = self.ZK.proof_of_opening(sum_random)
         return (
             proof1,
             proof2,

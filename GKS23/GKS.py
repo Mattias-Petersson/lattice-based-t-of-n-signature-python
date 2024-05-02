@@ -26,7 +26,6 @@ class GKS(Controller):
         self.p = p
         self.N = N
         self.t, self.n = tn
-        # TODO: Change the comm_scheme to be DOTT21 instead.
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
         self.message_space = Polynomial(self.p, self.N)
