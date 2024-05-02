@@ -144,15 +144,21 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {cs_bar.name}"
                 )
-            """
-            TODO: Make the following reconstruction test every possible subset
-            of b_bar_data. See how reconstruct() in this class does it. 
-            """
-            if self.secret_share.reconstruct_poly(b_bar.data) != b.data:
-                raise ValueError(
-                    f"Aborting. User {self.name} got an invalid sk proof for "
-                    + f"user {cs_bar.name}"
+            for indices in list(
+                itertools.combinations(
+                    range(self.secret_share.n), self.secret_share.t
                 )
+            ):
+                if (
+                    self.secret_share.reconstruct_poly(
+                        [b_bar.data[i] for i in indices]
+                    )
+                    != b.data
+                ):
+                    raise ValueError(
+                        f"Aborting. User {self.name} got an invalid sk proof for "
+                        + f"user {cs_bar.name} for indicies {indices}"
+                    )
             self.BGV_relation_prover.verify_sk(
                 b.data,
                 b_bar.data,
