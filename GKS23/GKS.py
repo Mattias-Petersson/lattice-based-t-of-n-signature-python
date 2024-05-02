@@ -138,7 +138,7 @@ if __name__ == "__main__":
     for _ in range(1):
         m_sign = gks.get_message()
         part = participants[0]
-        signatures = gks.sign(m_sign, participants[:2])
+        signatures = gks.sign(m_sign, participants[: gks.t])
         res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
     print(round(time.time() - now, 6), "seconds")
