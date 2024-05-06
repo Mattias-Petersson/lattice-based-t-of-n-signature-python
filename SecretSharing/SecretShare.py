@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from GKS23.MultiCounter import MultiCounter
 from type.classes import TN, SecretSharePoly, poly
 from utils.Polynomial import Polynomial
 
@@ -14,13 +15,14 @@ class SecretShare:
 
     """
 
-    def __init__(self, tn: TN, q: int):
+    def __init__(self, tn: TN, q: int, counter: MultiCounter):
         self.t, self.n = tn
         if self.t > self.n:
             raise ValueError("Got t larger than n in secret share.")
         self.q = q
-        self.polynomial = Polynomial(self.q, self.t)
+        self.polynomial = Polynomial(counter, self.q, self.t)
         self.cypari = self.polynomial.cypari
+        self.counter = counter
 
     def __generatePoly(self, s: poly) -> poly:
         """
@@ -33,6 +35,7 @@ class SecretShare:
             for i in range(1, self.t)
         ]
         pol = "".join(poly_arr) + str(s)
+        self.counter.inc_mod()
         return self.cypari.Pol(pol) * self.cypari.Mod(1, self.q)
 
     def __share(self, s):
@@ -70,4 +73,5 @@ class SecretShare:
         rec_arr = [self.polynomial.pol_to_arr(i.p) for i in r]
         polys = [list(col) for col in zip(*rec_arr)]
         ret_arr = [self.__reconstruct(i, contributors) for i in polys]
+        self.counter.inc_mod()
         return self.cypari.Pol(ret_arr) * self.cypari.Mod(1, self.q)

@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 from BDLOP16.RelationProver import RelationProver
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare import SecretShare
@@ -13,18 +14,20 @@ class BGVParticipant(Participant):
         comm_scheme: CommitmentScheme,
         secret_share: SecretShare,
         BGV_relation_prover: RelationProver,
+        counter: MultiCounter,
         Q: int,
         q: int,
         p: int,
         N: int,
         x: int,
     ):
-        super().__init__(secret_share, Q, q, p, N, x)
+        super().__init__(secret_share, counter, Q, q, p, N, x)
         self.Q = Q
         self.q = q
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
         self.BGV_relation_prover = BGV_relation_prover
+        self.counter = counter
         self.BGV_hash = lambda x: self.BGV_polynomial.hash(
             self.BGV_comm_scheme.kappa, x
         )
@@ -47,7 +50,8 @@ class BGVParticipant(Participant):
 
         self.com_e = self.__commit(self.e)
         self.c_e = self.BGV_comm_scheme.commit(self.com_e)
-
+        self.counter.inc_add()
+        self.counter.inc_mult(2)
         self.b = self.sum_a * self.s + self.q * self.e
         self.b_hash = self.BGV_hash(self.b)
 
@@ -68,6 +72,8 @@ class BGVParticipant(Participant):
         def make_b(s, e):
             if s.x != e.x:
                 raise ValueError()
+            self.counter.inc_add()
+            self.counter.inc_mult(2)
             return SecretSharePoly(s.x, self.sum_a * s.p + self.q * e.p)
 
         self.s_bar = self.secret_share.share_poly(self.s)
@@ -176,6 +182,7 @@ class BGVParticipant(Participant):
         new_com = 0
         new_r = 0
         for com in self.others["coms_s_bar"]:
+            self.counter.inc_add(2)
             new_com += com.data.m
             new_r += com.data.r
         self.c_s_k = [
@@ -189,6 +196,8 @@ class BGVParticipant(Participant):
     def enc(self, m) -> Ctx:
         r, e_prime, e_bis = self.BGV_polynomial.gaussian_array(3, 1)
         mprime = self.cypari.liftall(m)
+        self.counter.inc_add(3)
+        self.counter.inc_mult(4)
         u = self.sum_a * r + self.q * e_prime
         v = self.sum_b * r + self.q * e_bis + mprime
         proof = self.BGV_relation_prover.prove_enc(
@@ -203,9 +212,10 @@ class BGVParticipant(Participant):
         return Ctx(u, v, proof)
 
     def t_dec(self, ctx: Ctx, x: int):
-
+        self.counter.inc_add(1)
         m = self.sk.commit.m * ctx.u * x
         e = self.BGV_polynomial.uniform_element(2)
+        self.counter.inc_mult()
         u = m + self.q * e
         com_e = self.__commit(e)
         ds_proof = self.BGV_relation_prover.prove_ds(
@@ -229,6 +239,8 @@ class BGVParticipant(Participant):
         Q_half = (self.Q - 1) / 2
         Q_half_q = Q_half % self.q
         helper_array = round_and_pol(np.ones(self.N) * Q_half)
+        self.counter.inc_add(2)
+        self.counter.inc_mod()
         ptx = self.cypari.liftall(
             ctx.v - sum(d_u) + helper_array
         ) * self.cypari.Mod(1, self.q)

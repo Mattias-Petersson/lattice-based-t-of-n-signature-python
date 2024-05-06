@@ -2,6 +2,7 @@ from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from BDLOP16.RelationProver import RelationProver
+from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Controller import Controller
 from SecretSharing.SecretShare import SecretShare
@@ -13,6 +14,7 @@ from utils.Polynomial import Polynomial
 class BGV(Controller):
     def __init__(
         self,
+        counter: MultiCounter,
         p: int,
         q: int,
         N: int,
@@ -30,7 +32,7 @@ class BGV(Controller):
             self.n,
         ) = self.__getValues(values, tn)
         self.polynomial = self.comm_scheme.polynomial
-        self.message_space = Polynomial(self.p, self.N)
+        self.message_space = Polynomial(counter, self.p, self.N)
         self.cypari = self.comm_scheme.cypari
 
         super().__init__(self.participants)

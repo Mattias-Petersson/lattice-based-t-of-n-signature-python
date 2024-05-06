@@ -67,7 +67,7 @@ class GKS(
         bgv_values = BGVValues(
             self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(q, Q, N, values=bgv_values)
+        self.BGV = BGV(self.counter, q, Q, N, values=bgv_values)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -138,10 +138,10 @@ if __name__ == "__main__":
     gks = GKS(Q, **default_values)
     results = dict()
     participants = gks.KGen()
-    print(round(time.time() - now, 6), "seconds")
-    now = time.time()
     gks.counter.print()
     gks.counter.reset()
+    print(round(time.time() - now, 6), "seconds")
+    now = time.time()
     for _ in range(1):
         m_sign = gks.get_message()
         part = participants[0]
