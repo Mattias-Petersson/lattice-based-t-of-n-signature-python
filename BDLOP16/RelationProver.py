@@ -39,12 +39,6 @@ class RelationProver:
                 f"Failed to verify proof of triple sum for proof {name}:", *args
             )
 
-    def __verify_open(self, name, *args):
-        if not self.ZK.verify_proof_of_opening(*args):
-            raise ValueError(
-                f"Failed to verify proof of open for proof {name}", *args
-            )
-
     def prove_sk(
         self,
         ps,
@@ -66,18 +60,8 @@ class RelationProver:
             for psi, pei in zip(psis, peis)
         ]
 
-        proof_open_ps = self.ZK.proof_of_opening(ps)
-        proof_open_all_ps = [self.ZK.proof_of_opening(psi) for psi in psis]
-
-        proof_open_pe = self.ZK.proof_of_opening(pe)
-        proof_open_all_pe = [self.ZK.proof_of_opening(pei) for pei in peis]
-
         return (
             proof_sum,
-            proof_open_ps,
-            proof_open_pe,
-            proof_open_all_ps,
-            proof_open_all_pe,
             proof_all_sum,
         )
 
@@ -91,32 +75,24 @@ class RelationProver:
         come,
         comsis,
         comeis,
-        proof1,
-        proof2,
-        proof3,
-        proofs1,
-        proofs2,
-        proofs3,
+        proof,
+        proofs,
     ):
         comb = self.__commit_r0(b)
-        proof, *rest = proof1
+        proof, *rest = proof
         proof = self.__make_proof_open_linear(
             [coms, a, proof[0]], [come, p, proof[1]], [comb, 1, proof[2]]
         )
         self.__verify_sum("Sk", proof, *rest)
-        self.__verify_open("Com_s", coms[0][0], proof2)
-        self.__verify_open("Com_e", come[0][0], proof3)
         for idx, data in enumerate(bis):
             comb_i = self.__commit_r0(data[1])
-            proof, *rest = proofs3[idx]
+            proof, *rest = proofs[idx]
             proof = self.__make_proof_open_linear(
                 [comsis[idx], a, proof[0]],
                 [comeis[idx], p, proof[1]],
                 [comb_i, 1, proof[2]],
             )
             self.__verify_sum("Com_s, Com_e, Com_b", proof, *rest)
-            self.__verify_open("Com_s", comsis[idx][0][0], proofs1[idx])
-            self.__verify_open("Com_e", comeis[idx][0][0], proofs2[idx])
 
     def prove_enc(self, r, m, eprime, ebis, a, b, p):
         com_r, com_m = self.__commit_obj_r_com(r, m)
@@ -125,17 +101,9 @@ class RelationProver:
         proof2 = self.ZK.proof_of_triple_sum(
             com_r.r, com_ebis.r, com_m.r, self.r0, b, p, 1, 1
         )
-        proof3 = self.ZK.proof_of_opening(com_r.r)
-        proof4 = self.ZK.proof_of_opening(com_m.r)
-        proof5 = self.ZK.proof_of_opening(com_eprime.r)
-        proof6 = self.ZK.proof_of_opening(com_ebis.r)
         return (
             proof1,
             proof2,
-            proof3,
-            proof4,
-            proof5,
-            proof6,
             self.comm_scheme.commit(com_r),
             self.comm_scheme.commit(com_m),
             self.comm_scheme.commit(com_eprime),
@@ -151,10 +119,6 @@ class RelationProver:
         v,
         proof1,
         proof2,
-        proof3,
-        proof4,
-        proof5,
-        proof6,
         com_r,
         com_m,
         com_eprime,
@@ -179,10 +143,6 @@ class RelationProver:
             [com_v, 1, proof[3]],
         )
         self.__verify_triple_sum("Com_r, Com_ebis, Com_m, Com_v", proof, *rest)
-        self.__verify_open("Com_r", com_r[0][0], proof3)
-        self.__verify_open("Com_m", com_m[0][0], proof4)
-        self.__verify_open("Com_eprime", com_eprime[0][0], proof5)
-        self.__verify_open("Com_ebis", com_ebis[0][0], proof6)
         # If nothing has raised a ValueError until here, the verification is True.
         return True
 
@@ -212,15 +172,13 @@ class RelationProver:
         proof1 = self.ZK.proof_of_sum(
             r0.r, r1.r, sum_random, a_vec[0], a_vec[1], 1
         )
-        proof2 = self.ZK.proof_of_opening(sum_random)
         return (
             proof1,
-            proof2,
             self.comm_scheme.commit(r0),
             self.comm_scheme.commit(r1),
         )
 
-    def verify_r(self, proof1, proof2, rc0, rc1, a_vec, c_sum):
+    def verify_r(self, proof1, rc0, rc1, a_vec, c_sum):
         proof, *rest = proof1
         proof = self.__make_proof_open_linear(
             [rc0, a_vec[0], proof[0]],
@@ -228,25 +186,18 @@ class RelationProver:
             [c_sum, 1, proof[2]],
         )
         self.__verify_sum("Rc, c_sum", proof, *rest)
-        self.__verify_open("c_sum", c_sum[0][0], proof2)
         return True
 
     def prove_ds(self, p_si, p_ei, u, lagrange, p):
-        proof1 = self.ZK.proof_of_opening(p_si)
-        proof2 = self.ZK.proof_of_opening(p_ei)
-        proof3_fac = lagrange * u
-        proof3 = self.ZK.proof_of_sum(p_si, p_ei, self.r0, proof3_fac, p, 1)
-        return (proof1, proof2, proof3, proof3_fac)
+        proof_fac = lagrange * u
+        proof = self.ZK.proof_of_sum(p_si, p_ei, self.r0, proof_fac, p, 1)
+        return (proof, proof_fac)
 
-    def verify_ds(
-        self, proof1, proof2, proof3, proof3_fac, p, com_si, com_ei, ds
-    ):
+    def verify_ds(self, proof, proof_fac, p, com_si, com_ei, ds):
         com_ds = self.__commit_r0(ds)
-        self.__verify_open("Com_si", com_si[0][0], proof1)
-        self.__verify_open("Com_ei", com_ei[0][0], proof2)
-        proof, *rest = proof3
+        proof, *rest = proof
         proof = self.__make_proof_open_linear(
-            [com_si, proof3_fac, proof[0]],
+            [com_si, proof_fac, proof[0]],
             [com_ei, p, proof[1]],
             [com_ds, 1, proof[2]],
         )

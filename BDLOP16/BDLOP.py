@@ -9,7 +9,7 @@ from type.classes import (
 )
 
 
-class BDLOP:
+class BDLOP:  # TODO: REMOVE UNUSED PROOF METHODS
     def __init__(self, comm_scheme: BDLOPCommScheme):
         self.comm_scheme = comm_scheme
         self.polynomial = comm_scheme.polynomial

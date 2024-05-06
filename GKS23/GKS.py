@@ -12,7 +12,9 @@ from SecretSharing.SecretShare import SecretShare
 from type.classes import TN, BGVValues, Signature, poly
 
 
-class GKS(Controller):
+class GKS(
+    Controller
+):  # TODO: MAKE A GKS CONTROLLER FOR REVISED (branch or something)
     def __init__(
         self,
         Q: int,
