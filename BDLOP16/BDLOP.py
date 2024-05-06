@@ -1,4 +1,6 @@
 import math
+import time
+import cypari2
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
 from GKS23.MultiCounter import MultiCounter
 from type.classes import (
@@ -7,11 +9,9 @@ from type.classes import (
     ProofOfSpecificOpen,
     ProofOfOpenLinear,
 )
-import time
-import cypari2
 
 
-class BDLOP:
+class BDLOP:  # TODO: REMOVE UNUSED PROOF METHODS
     def __init__(self, comm_scheme: BDLOPCommScheme):
         self.comm_scheme = comm_scheme
         self.polynomial = comm_scheme.polynomial

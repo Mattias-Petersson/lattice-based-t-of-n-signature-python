@@ -2,18 +2,20 @@ import time
 from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
-from BDLOP16.RelationProofs import RelationProver
-from BGV122.BGV import BGV
+from BDLOP16.RelationProver import RelationProver
+from BGV12.BGV import BGV
 from GKS23.GKSParticipant import GKSParticipant
 from GKS23.MultiCounter import MultiCounter
 from Models.Controller import Controller
-from utils.values import default_values
-from SecretSharing.SecretShare2 import SecretShare
-from type.classes import TN, BGVValues, Signature, poly
+from utils.values import default_values, Q
 from utils.Polynomial import Polynomial
+from SecretSharing.SecretShare import SecretShare
+from type.classes import TN, BGVValues, Signature, poly
 
 
-class GKS(Controller):
+class GKS(
+    Controller
+):  # TODO: MAKE A GKS CONTROLLER FOR REVISED (branch or something)
     def __init__(
         self,
         Q: int,
@@ -65,7 +67,7 @@ class GKS(Controller):
         bgv_values = BGVValues(
             self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(bgv_values, q, Q, N)
+        self.BGV = BGV(q, Q, N, values=bgv_values)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -104,9 +106,9 @@ class GKS(Controller):
         self.__KGen_step_3()
         return self.__finalize()
 
-    def __sign_1(self, mu: poly, U: Iterable[GKSParticipant]):
+    def __sign_1(self, U: Iterable[GKSParticipant]):
         for p in U:
-            p.sign_1(mu)
+            p.sign_1()
         self.__send_to_subset("ctx_r", U)
         self.__send_to_subset("proof_r", U)
         self.__send_to_subset("w", U)
@@ -120,7 +122,7 @@ class GKS(Controller):
 
     def sign(self, mu: poly, U: Iterable[GKSParticipant]) -> list[Signature]:
         lagrange_x = self.BGV.participant_lagrange(U)
-        self.__sign_1(mu, U)
+        self.__sign_1(U)
         self.__sign_2(mu, U, lagrange_x)
         return [p.generate_signature() for p in U]
 
@@ -133,17 +135,17 @@ class GKS(Controller):
 
 if __name__ == "__main__":
     now = time.time()
-    gks = GKS(**default_values)
+    gks = GKS(Q, **default_values)
     results = dict()
     participants = gks.KGen()
     print(round(time.time() - now, 6), "seconds")
     now = time.time()
     gks.counter.print()
     gks.counter.reset()
-    for _ in range(10):
+    for _ in range(1):
         m_sign = gks.get_message()
         part = participants[0]
-        signatures = gks.sign(m_sign, participants[:2])
+        signatures = gks.sign(m_sign, participants[: gks.t])
         res = gks.vrfy(m_sign, part, signatures[0])
         results[res] = results.get(res, 0) + 1
         gks.counter.print()

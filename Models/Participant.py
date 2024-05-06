@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from GKS23.MultiCounter import MultiCounter
-from Models.CommitmentScheme import CommitmentScheme
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import NameData
 
 

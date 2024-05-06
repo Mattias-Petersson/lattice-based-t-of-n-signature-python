@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
+import cypari2
 
 from type.classes import Commit, CommitOpen
 from utils.Polynomial import Polynomial
-import cypari2
 
 
 class CommitmentScheme(ABC):
@@ -23,12 +23,16 @@ class CommitmentScheme(ABC):
         """
         Return randomness that can be used to commit to a message.
         """
-        pass
 
     @abstractmethod
     def commit(self, commit: Commit) -> list[cypari2.gen.Gen]:
-        pass
+        """
+        Commit to a message and randomness.
+        """
 
     @abstractmethod
     def open(self, commit_open: CommitOpen) -> bool:
-        pass
+        """
+        Taking in a commitment, a message, and randomness, verify that
+        the message and randomness produce the same commitment.
+        """

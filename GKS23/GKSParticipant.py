@@ -1,8 +1,8 @@
-from BDLOP16.RelationProofs import RelationProver
-from BGV122.BGVParticipant import BGVParticipant
+from BDLOP16.RelationProver import RelationProver
+from BGV12.BGVParticipant import BGVParticipant
 from GKS23.MultiCounter import MultiCounter
 from Models.CommitmentScheme import CommitmentScheme
-from SecretSharing.SecretShare2 import SecretShare
+from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, Ctx, GksPk, Signature, poly
 
 
@@ -24,7 +24,6 @@ class GKSParticipant(BGVParticipant):
         super().__init__(
             BGV_comm_scheme,
             secret_share,
-            relation_prover,
             BGV_relation_prover,
             counter,
             Q,
@@ -33,26 +32,26 @@ class GKSParticipant(BGVParticipant):
             N,
             x,
         )
+        self.relation_prover = relation_prover
         self.comm_scheme = comm_scheme
         self.from_u = dict()
         self.polynomial = comm_scheme.polynomial
         self.a_ts = self.polynomial.uniform_element()
         self.a_ts_hash = self.hash(self.a_ts)
 
-    def hash(self, m):
-        return self.polynomial.hash(self.comm_scheme.kappa, m)
+    def hash(self, x):
+        return self.polynomial.hash(self.comm_scheme.kappa, x)
 
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data
 
     def __verify_ctx(self, d):
-        if not (
-            d.data[0].verify(
+        def verify(d):
+            return d.verify(
                 self.BGV_relation_prover, self.sum_a, self.sum_b, self.q
             )
-        ) and d.data[1].verify(
-            self.BGV_relation_prover, self.sum_a, self.sum_b, self.q
-        ):
+
+        if not verify(d.data[0]) and verify(d.data[1]):
             raise ValueError(
                 f"Aborting. User {self.name} got an failing enc_proof for "
                 + f"user {d.name}"
@@ -63,27 +62,14 @@ class GKSParticipant(BGVParticipant):
         self.counter.inc_add(len(vec_1))
         return sum(v1 * v2 for v1, v2 in zip(vec_1, vec_2, strict=True))
 
-    def __make_ctx_s(self) -> list[Ctx]:
-        """
-        Ctx_s is the sum of all individual ciphertexts ctx_s_j.
-        """
-        ctx0 = Ctx(0, 0, None)
-        ctx1 = Ctx(0, 0, None)
-        for d in self.others["ctx_s"]:
+    def __sum_ctx(self, lst) -> list[Ctx]:
+        ctx0, ctx1 = Ctx(0, 0, None), Ctx(0, 0, None)
+        for entry in lst:
+            self.__verify_ctx(entry)
             self.counter.inc_add(4)
-            self.__verify_ctx(d)
-            ctx0 += d.data[0]
-            ctx1 += d.data[1]
+            ctx0 += entry.data[0]
+            ctx1 += entry.data[1]
         return [ctx0, ctx1]
-
-    def __sum_ctx_r(self) -> list[Ctx]:
-        ctx1, ctx2 = Ctx(0, 0, None), Ctx(0, 0, None)
-        for d in self.from_u["ctx_r"]:
-            self.__verify_ctx(d)
-            self.counter.inc_add(4)
-            ctx1 += d.data[0]
-            ctx2 += d.data[1]
-        return [ctx1, ctx2]
 
     def KGen_step_2(self):
         self.counter.inc_add(len(self.others["a"]))
@@ -100,7 +86,9 @@ class GKSParticipant(BGVParticipant):
     def KGen_step_4(self):
         for proof, y in zip(self.others["proof_s"], self.others["y"]):
             if not self.relation_prover.verify_s(
-                *proof.data, self.a_vector, y.data
+                self.a_vector,
+                y.data,
+                *proof.data,
             ):
                 raise ValueError(
                     f"Aborting. User {self.name} got an failing r_proof for "
@@ -108,12 +96,11 @@ class GKSParticipant(BGVParticipant):
                 )
         self.counter.inc_add(len(self.others["y"]))
         sum_y = sum(i.data for i in self.others["y"])
-        self.sum_ctx_s: list[Ctx] = self.__make_ctx_s()
+        self.sum_ctx_s: list[Ctx] = self.__sum_ctx(self.others["ctx_s"])
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
-    def sign_1(self, mu):
+    def sign_1(self):
         r = self.polynomial.gaussian_array(2, 2**13)
-        ck = self.hash((self.pk, mu))
         self.w = self.__cross_prod(self.a_vector, r)
         self.com_w = Commit(self.w, self.comm_scheme.r_commit())
         self.c_w = self.comm_scheme.commit(self.com_w)
@@ -122,11 +109,10 @@ class GKSParticipant(BGVParticipant):
         )
         self.ctx_r = [self.enc(i) for i in r]
 
-    def sign_2(self, mu, x: int):
-
+    def sign_2(self, mu, lagrange_x: int):
         for proof, c_w in zip(self.from_u["proof_r"], self.from_u["c_w"]):
             if not self.relation_prover.verify_r(
-                *proof.data, self.a_vector, c_w.data
+                *proof.data, a_vec=self.a_vector, c_sum=c_w.data
             ):
                 raise ValueError(
                     f"Aborting. User {self.name} got an failing r_proof for "
@@ -139,12 +125,12 @@ class GKSParticipant(BGVParticipant):
         self.counter.inc_mult(2 * len(self.sum_ctx_s))
         self.c: poly = self.hash((self.sum_cw, self.pk, mu))
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
-        sum_ctx_r = self.__sum_ctx_r()
+        sum_ctx_r = self.__sum_ctx(self.from_u["ctx_r"])
         self.counter.inc_add(2 * len(sum_ctx_r))
         self.ctx_z: list[Ctx] = [
             c + r for c, r in zip(c_ctx, sum_ctx_r, strict=True)
         ]
-        self.ds = [self.t_dec(z, x) for z in self.ctx_z]
+        self.ds = [self.t_dec(z, lagrange_x) for z in self.ctx_z]
 
     def generate_signature(self) -> Signature:
         d0, d1 = [], []
@@ -162,7 +148,7 @@ class GKSParticipant(BGVParticipant):
         self.counter.inc_mult()
         cy = signature.c * self.pk.y
         self.counter.inc_add()
-        w_star = self.cypari.liftall(az - cy)
+        w_star = az - cy
         hashed = self.hash(
             (
                 self.cypari.liftall(

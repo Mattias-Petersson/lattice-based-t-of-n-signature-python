@@ -18,15 +18,14 @@ class Controller(abc.ABC):
         except Exception as e:
             raise ValueError(
                 f"Invalid attribute name in class Participant: {attr}, {e}"
-            )
+            ) from e
 
     def recv_value_shared(self, attr):
         return tuple(i.share_others_attr(attr) for i in self.participants)
 
     def share_data(self, attr, data):
         for i in self.participants:
-            res = tuple(filter(lambda p: True, data))
-            i.recv_from_other(attr, res)
+            i.recv_from_other(attr, data)
 
     def share_partials(self, attr):
         data = self.recv_value(attr)

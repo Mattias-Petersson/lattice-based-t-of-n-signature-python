@@ -218,12 +218,3 @@ class Polynomial:
             h.update(str.encode(str(i)))
         integers_hash: list[int] = list(h.digest())
         return self.challenge(kappa=kappa, seed=integers_hash)
-
-
-if __name__ == "__main__":
-    poly = Polynomial()
-    temp = poly.uniform_array(3, 2)
-    print("Arr", temp)
-    temp2 = [poly.in_rq(poly.challenge(36)) for _ in range(3)]
-    print("\n\nChallenge", temp2)
-    print(len(temp), len(temp2))

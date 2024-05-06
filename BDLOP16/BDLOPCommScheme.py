@@ -17,7 +17,7 @@ class BDLOPCommScheme(CommitmentScheme):
         sbeta: int = 1,
         kappa: int = 36,
         q: int = 2**32 - 527,
-        N: int = 1024,
+        N: int = 2**10,
     ):
         def __make_A1():
             A1_prime = self.polynomial.uniform_array((n, k - n))
@@ -106,18 +106,3 @@ class BDLOPCommScheme(CommitmentScheme):
         )
         c = self.commit(commit)
         return commit, c
-
-
-if __name__ == "__main__":
-    start = time.time()
-    comm = BDLOPCommScheme(MultiCounter())
-    open = dict()
-    for i in range(100):
-        commit: Commit = Commit(
-            m=comm.polynomial.uniform_array(comm.l), r=comm.r_commit()
-        )
-        c = comm.commit(commit)
-        opened = comm.open(CommitOpen(c, commit))
-        open[opened] = open.get(opened, 0) + 1
-    print(open)
-    print("Total execution time: %s seconds" % (round(time.time() - start, 4)))

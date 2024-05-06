@@ -1,13 +1,14 @@
 import pytest
 import numpy as np
 
-from BGV122.BGV import BGV
+from BGV12.BGV import BGV
 from type.classes import SecretSharePoly
+from utils.values import default_values
 
 
 @pytest.fixture(scope="session")
 def bgv():
-    return BGV(tn=(3, 5))
+    return BGV(**default_values)
 
 
 @pytest.fixture(scope="session", autouse=True)

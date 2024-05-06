@@ -75,10 +75,7 @@ class Ctx:
         return hash((str(self.u), str(self.v)))
 
     def verify(self, RP, a, b, p):
-        if self.proof == None:
-            print("testing proof of altered CTX")
-            return False
-        return RP.verify_enc(*self.proof, a, b, p, self.u, self.v)
+        return RP.verify_enc(a, b, p, self.u, self.v, *self.proof)
 
     __rmul__ = __mul__
 
