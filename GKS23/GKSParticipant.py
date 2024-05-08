@@ -18,6 +18,8 @@ class GKSParticipant(BGVParticipant):
         p: int,
         N: int,
         x: int,
+        a_ts,
+        sum_a,
     ):
         super().__init__(
             BGV_comm_scheme,
@@ -28,13 +30,21 @@ class GKSParticipant(BGVParticipant):
             p,
             N,
             x,
+            sum_a,
         )
         self.relation_prover = relation_prover
         self.comm_scheme = comm_scheme
         self.from_u = dict()
         self.polynomial = comm_scheme.polynomial
-        self.a_ts = self.polynomial.uniform_element()
-        self.a_ts_hash = self.hash(self.a_ts)
+        self.a_vector = None
+        if a_ts != None:
+            self.a_vector = [
+                a_ts,
+                1,
+            ]
+        if self.a_vector == None:
+            self.a_ts = self.polynomial.uniform_element()
+            self.a_ts_hash = self.hash(self.a_ts)
 
     def hash(self, x):
         return self.polynomial.hash(self.comm_scheme.kappa, x)

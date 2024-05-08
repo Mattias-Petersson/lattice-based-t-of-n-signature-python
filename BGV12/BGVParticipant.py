@@ -18,6 +18,7 @@ class BGVParticipant(Participant):
         p: int,
         N: int,
         x: int,
+        sum_a,
     ):
         super().__init__(secret_share, Q, q, p, N, x)
         self.Q = Q
@@ -29,17 +30,20 @@ class BGVParticipant(Participant):
             self.BGV_comm_scheme.kappa, x
         )
         # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.sum_a = sum_a
         self.kappa = 39
         self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
-        self.a = self.BGV_polynomial.uniform_element()
+        if self.sum_a == None:
+            self.a = self.BGV_polynomial.uniform_element()
+            self.a_hash = self.BGV_hash(self.a)
         self.cypari = self.BGV_polynomial.cypari
-        self.a_hash = self.BGV_hash(self.a)
 
     def hash(self, x):
         return self.BGV_hash(x)
 
     def make_b(self):
-        self.sum_a = sum(i.data for i in self.others["a"])
+        if self.sum_a == None:
+            self.sum_a = sum(i.data for i in self.others["a"])
         self.s, self.e = self.ternary(), self.ternary()
 
         self.com_s = self.__commit(self.s)
