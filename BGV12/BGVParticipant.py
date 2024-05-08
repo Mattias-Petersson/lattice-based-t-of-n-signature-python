@@ -46,6 +46,7 @@ class BGVParticipant(Participant):
 
     def make_b(self):
         if self.sum_a == None:
+            self.counter.inc_add(len(self.others["a"]))
             self.sum_a = sum(i.data for i in self.others["a"])
         self.s, self.e = self.ternary(), self.ternary()
 

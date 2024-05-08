@@ -147,7 +147,7 @@ class GKS(
 
 if __name__ == "__main__":
     now = time.time()
-    gks = GKS(Q, revised=True, **default_values)
+    gks = GKS(Q, revised=False, **default_values)
     results = dict()
     participants = gks.KGen()
     gks.counter.print()
