@@ -18,12 +18,14 @@ class BGV(Controller):
         p: int,
         q: int,
         N: int,
+        revised: bool,
         tn: TN | None = None,
         values: BGVValues | None = None,
     ):
         self.p = p
         self.q = q
         self.N = N
+        self.revised = revised
         (
             self.comm_scheme,
             self.secret_share,
@@ -66,6 +68,7 @@ class BGV(Controller):
                 1,
                 self.N,
                 i + 1,
+                None,
             )
             for i in range(tn[1])
         )
@@ -133,7 +136,8 @@ class BGV(Controller):
     def __finalize(self):
         for part in self.participants:
             part.generate_final()
-        self.__check_equiv("sum_a")
+        if not self.revised:
+            self.__check_equiv("sum_a")
         self.__check_equiv("sum_b")
         return self.participants
 
@@ -143,7 +147,8 @@ class BGV(Controller):
         throw an error. If all succeed we return a public key and a secret key
         for each participant.
         """
-        self.assert_value_matches_hash("a")
+        if not self.revised:
+            self.assert_value_matches_hash("a")
         self.__compute_b()
         self.__share_b_bar()
         self.__broadcast()

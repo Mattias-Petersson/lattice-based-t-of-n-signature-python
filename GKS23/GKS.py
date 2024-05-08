@@ -23,7 +23,9 @@ class GKS(
         p: int,
         N: int,
         tn: TN,
+        revised: bool,
     ):
+        self.revised = revised
         self.Q = Q
         self.q = q
         self.p = p
@@ -48,6 +50,13 @@ class GKS(
             self.BGV_comm_scheme,
             self.BGV_secret_share,
         )
+        a_ts = None
+        sum_a = None
+        self.revised = revised
+        if revised:
+            a_ts = self.comm_scheme.polynomial.uniform_element()
+            sum_a = self.BGV_comm_scheme.polynomial.uniform_element()
+
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
@@ -61,13 +70,15 @@ class GKS(
                 self.p,
                 self.N,
                 i + 1,
+                a_ts,
+                sum_a,
             )
             for i in range(self.n)
         )
         bgv_values = BGVValues(
             self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
-        self.BGV = BGV(self.counter, q, Q, N, values=bgv_values)
+        self.BGV = BGV(self.counter, q, Q, N, self.revised, values=bgv_values)
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -102,7 +113,8 @@ class GKS(
         KGen of actively secure GKS23. Step one is init BGV, which is done in
         the constructor and is thus not included here.
         """
-        self.__KGen_step_2()
+        if not self.revised:
+            self.__KGen_step_2()
         self.__KGen_step_3()
         return self.__finalize()
 
@@ -135,7 +147,8 @@ class GKS(
 
 if __name__ == "__main__":
     now = time.time()
-    gks = GKS(Q, **default_values)
+    gks = GKS(Q, revised=False, **default_values)
+    print(round(time.time() - now, 6), "seconds")
     results = dict()
     participants = gks.KGen()
     gks.counter.print()
