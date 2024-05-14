@@ -21,6 +21,7 @@ class GKS(
         q: int,
         p: int,
         N: int,
+        sigma: int,
         tn: TN,
         revised: bool,
     ):
@@ -29,6 +30,7 @@ class GKS(
         self.q = q
         self.p = p
         self.N = N
+        self.sigma = sigma
         self.t, self.n = tn
         self.comm_scheme = BDLOPCommScheme(q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
@@ -66,6 +68,7 @@ class GKS(
                 self.q,
                 self.p,
                 self.N,
+                self.sigma,
                 i + 1,
                 a_ts,
                 sum_a,
@@ -149,7 +152,7 @@ if __name__ == "__main__":
     results = dict()
     participants = gks.KGen()
     now = time.time()
-    for _ in range(1):
+    for _ in range(100):
         m_sign = gks.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[: gks.t])

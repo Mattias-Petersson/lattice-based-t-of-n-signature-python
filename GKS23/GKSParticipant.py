@@ -17,6 +17,7 @@ class GKSParticipant(BGVParticipant):
         q: int,
         p: int,
         N: int,
+        sigma: int,
         x: int,
         a_ts,
         sum_a,
@@ -37,6 +38,7 @@ class GKSParticipant(BGVParticipant):
         self.from_u = dict()
         self.polynomial = comm_scheme.polynomial
         self.a_vector = None
+        self.sigma = sigma
         if a_ts != None:
             self.a_vector = [
                 a_ts,
@@ -102,7 +104,7 @@ class GKSParticipant(BGVParticipant):
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self):
-        r = self.polynomial.gaussian_array(2, 2**13)
+        r = self.polynomial.gaussian_array(2, self.sigma)
         self.w = self.__cross_prod(self.a_vector, r)
         self.com_w = Commit(self.w, self.comm_scheme.r_commit())
         self.c_w = self.comm_scheme.commit(self.com_w)
