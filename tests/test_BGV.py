@@ -8,7 +8,8 @@ from utils.values import default_values
 
 @pytest.fixture(scope="session")
 def bgv():
-    return BGV(**default_values)
+    q, p, N, tn, _ = default_values.values()
+    return BGV(p, q, N, False, tn)
 
 
 @pytest.fixture(scope="session", autouse=True)

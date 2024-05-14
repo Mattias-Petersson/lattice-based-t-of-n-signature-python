@@ -7,7 +7,7 @@ from type.classes import Ctx, GksPk
 
 @pytest.fixture(scope="session")
 def gks():
-    return GKS(Q, **default_values)
+    return GKS(Q, **default_values, revised=False)
 
 
 @pytest.fixture(scope="session", autouse=True)
