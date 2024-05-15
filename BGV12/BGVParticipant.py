@@ -191,7 +191,7 @@ class BGVParticipant(Participant):
         return self.pk, self.sk
 
     def enc(self, m) -> Ctx:
-        r, e_prime, e_bis = self.BGV_polynomial.gaussian_array(3, 1)
+        r, e_prime, e_bis = self.BGV_polynomial.uniform_array(3, 2)
         mprime = self.cypari.liftall(m)
         u = self.sum_a * r + self.q * e_prime
         v = self.sum_b * r + self.q * e_bis + mprime
@@ -209,7 +209,7 @@ class BGVParticipant(Participant):
     def t_dec(self, ctx: Ctx, x: int):
 
         m = self.sk.commit.m * ctx.u * x
-        e = self.BGV_polynomial.uniform_element(2)
+        e = self.BGV_polynomial.gaussian_element(2**5)
         u = m + self.q * e
         com_e = self.__commit(e)
         ds_proof = self.BGV_relation_prover.prove_ds(
