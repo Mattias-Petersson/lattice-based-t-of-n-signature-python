@@ -13,5 +13,5 @@ single_use_values = {
     "tn": (3, 5),
     "sigma": 2**11,
 }
-# Q is a large plaintext modulus.
+# Q is a large ciphertext modulus.
 Q = 2**36 - 5
