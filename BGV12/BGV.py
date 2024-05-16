@@ -56,6 +56,9 @@ class BGV(Controller):
         assert tn is not None
         comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare(tn, self.q)
+        sum_a = None
+        if self.revised:
+            sum_a = comm.polynomial.uniform_element()
         part = tuple(
             BGVParticipant(
                 comm,
@@ -66,7 +69,7 @@ class BGV(Controller):
                 1,
                 self.N,
                 i + 1,
-                None,
+                sum_a,
             )
             for i in range(tn[1])
         )

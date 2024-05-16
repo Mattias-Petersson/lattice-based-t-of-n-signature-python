@@ -9,7 +9,7 @@ from utils.values import Q, default_values
 @pytest.fixture(scope="session")
 def bgv():
     q, _, N, tn, _ = default_values.values()
-    return BGV(q, Q, N, False, tn)
+    return BGV(q, Q, N, True, tn)
 
 
 @pytest.fixture(scope="session", autouse=True)
