@@ -8,8 +8,9 @@ from utils.values import Q, default_values
 
 @pytest.fixture(scope="session")
 def bgv():
+    revised = np.random.choice([True, False])
     q, _, N, tn, _ = default_values.values()
-    return BGV(q, Q, N, True, tn)
+    return BGV(q, Q, N, revised, tn)
 
 
 @pytest.fixture(scope="session", autouse=True)
