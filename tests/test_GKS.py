@@ -1,5 +1,5 @@
 import pytest
-
+import numpy as np
 from GKS23.GKS import GKS
 from utils.values import default_values, Q
 from type.classes import Ctx, GksPk
@@ -7,7 +7,8 @@ from type.classes import Ctx, GksPk
 
 @pytest.fixture(scope="session")
 def gks():
-    return GKS(Q, **default_values, revised=False)
+    revised = np.random.choice([True, False])
+    return GKS(Q, **default_values, revised=revised)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -23,7 +24,7 @@ def sign(gks):
 
 
 def equal_arrs(*args):
-    return all([len(set(i)) == 1 for i in args])
+    return all(len(set(i)) == 1 for i in args)
 
 
 def split_values(lst):
