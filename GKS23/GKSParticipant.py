@@ -35,6 +35,7 @@ class GKSParticipant(BGVParticipant):
         )
         self.relation_prover = relation_prover
         self.comm_scheme = comm_scheme
+        self.kappa = self.comm_scheme.kappa
         self.from_u = dict()
         self.polynomial = comm_scheme.polynomial
         self.a_vector = None
@@ -49,7 +50,7 @@ class GKSParticipant(BGVParticipant):
             self.a_ts_hash = self.hash(self.a_ts)
 
     def hash(self, x):
-        return self.polynomial.hash(self.comm_scheme.kappa, x)
+        return self.polynomial.hash(self.kappa, x)
 
     def recv_from_subset(self, attr: str, data):
         self.from_u[attr] = data

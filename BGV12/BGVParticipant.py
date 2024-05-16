@@ -25,13 +25,10 @@ class BGVParticipant(Participant):
         self.q = q
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
+        self.kappa = self.BGV_comm_scheme.kappa
         self.BGV_relation_prover = BGV_relation_prover
-        self.BGV_hash = lambda x: self.BGV_polynomial.hash(
-            self.BGV_comm_scheme.kappa, x
-        )
-        # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.BGV_hash = lambda x: self.BGV_polynomial.hash(self.kappa, x)
         self.sum_a = sum_a
-        self.kappa = 39
         self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
         if self.sum_a == None:
             self.a = self.BGV_polynomial.uniform_element()
