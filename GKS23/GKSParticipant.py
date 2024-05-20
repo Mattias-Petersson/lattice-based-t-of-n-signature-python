@@ -1,3 +1,4 @@
+import time
 from BDLOP16.RelationProver import RelationProver
 from BGV12.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
@@ -87,9 +88,12 @@ class GKSParticipant(BGVParticipant):
         self.y = self.__cross_prod(self.a_vector, self.s)
         self.y_hash = self.hash(self.y)
         self.proof_s = self.relation_prover.prove_s(self.a_vector, self.s)
+        now = time.time()
         self.ctx_s = [self.enc(s) for s in self.s]
+        print("TS keygen 3 enc", round(time.time() - now, 6), "seconds")
 
     def KGen_step_4(self):
+        now = time.time()
         for proof, y in zip(self.others["proof_s"], self.others["y"]):
             if not self.relation_prover.verify_s(
                 self.a_vector,
@@ -100,8 +104,11 @@ class GKSParticipant(BGVParticipant):
                     f"Aborting. User {self.name} got an failing r_proof for "
                     + f"user {proof.name}"
                 )
+        print("TS keygen 4 verify", round(time.time() - now, 6), "seconds")
         sum_y = sum(i.data for i in self.others["y"])
+        now = time.time()
         self.sum_ctx_s: list[Ctx] = self.__sum_ctx(self.others["ctx_s"])
+        print("TS keygen 4 sum", round(time.time() - now, 6), "seconds")
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self):
@@ -109,12 +116,17 @@ class GKSParticipant(BGVParticipant):
         self.w = self.__cross_prod(self.a_vector, r)
         self.com_w = Commit(self.w, self.comm_scheme.r_commit())
         self.c_w = self.comm_scheme.commit(self.com_w)
+        now = time.time()
         self.proof_r = self.relation_prover.prove_r(
             self.a_vector, r, self.com_w.r
         )
+        print("sign 1 prove", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.ctx_r = [self.enc(i) for i in r]
+        print("sign 1 enc", round(time.time() - now, 6), "seconds")
 
     def sign_2(self, mu, lagrange_x: int):
+        now = time.time()
         for proof, c_w in zip(self.from_u["proof_r"], self.from_u["c_w"]):
             if not self.relation_prover.verify_r(
                 *proof.data, a_vec=self.a_vector, c_sum=c_w.data
@@ -123,24 +135,32 @@ class GKSParticipant(BGVParticipant):
                     f"Aborting. User {self.name} got an failing r_proof for "
                     + f"user {proof.name}"
                 )
+        print("sign 2 verify", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.sum_cw = self.cypari.liftall(
             sum(u.data for u in self.from_u["c_w"])
         )
         self.c: poly = self.hash((self.sum_cw, self.pk, mu))
+        print("sign 2 misc", round(time.time() - now, 6), "seconds")
+        now = time.time()
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx(self.from_u["ctx_r"])
         self.ctx_z: list[Ctx] = [
             c + r for c, r in zip(c_ctx, sum_ctx_r, strict=True)
         ]
+        print("sign 2 ctx math", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.ds = [self.t_dec(z, lagrange_x) for z in self.ctx_z]
+        print("sign 2 tdec", round(time.time() - now, 6), "seconds")
 
     def generate_signature(self) -> Signature:
         d0, d1 = [], []
         for d in self.from_u["ds"]:
             d0.append(d.data[0])
             d1.append(d.data[1])
-
+        now = time.time()
         z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
+        print("sign finalize comb", round(time.time() - now, 6), "seconds")
         rho = sum(com.data.r for com in self.from_u["com_w"])
         return Signature(self.c, z, rho)
 
