@@ -108,7 +108,7 @@ class BGV(Controller):
         now = time.time()
         for part in self.participants:
             part.check_open()
-        print("check open", round(time.time() - now, 6), "seconds")
+        # print("check open", round(time.time() - now, 6), "seconds")
 
     def __broadcast(self):
         """
@@ -141,25 +141,25 @@ class BGV(Controller):
         now = time.time()
         if not self.revised:
             self.assert_value_matches_hash("a")
-        print("verify a", round(time.time() - now, 6), "seconds")
+        # print("verify a", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.__compute_b()
-        print("compute b", round(time.time() - now, 6), "seconds")
+        # print("compute b", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.__share_b_bar()
-        print("share b", round(time.time() - now, 6), "seconds")
+        # print("share b", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.__broadcast()
-        print("broadcast", round(time.time() - now, 6), "seconds")
+        # print("broadcast", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.assert_value_matches_hash("b")
-        print("assert b matches", round(time.time() - now, 6), "seconds")
+        # print("assert b matches", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.__share_commits()
-        print("share commits", round(time.time() - now, 6), "seconds")
+        # print("share commits", round(time.time() - now, 6), "seconds")
         now = time.time()
         finalize = self.__finalize()
-        print("finalize", round(time.time() - now, 6), "seconds")
+        # print("finalize", round(time.time() - now, 6), "seconds")
         return finalize
 
     def enc(self, u: BGVParticipant, m: poly) -> Ctx:

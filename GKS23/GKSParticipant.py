@@ -97,7 +97,7 @@ class GKSParticipant(BGVParticipant):
         self.proof_s = self.relation_prover.prove_s(self.a_vector, self.s)
         now = time.time()
         self.ctx_s = [self.enc(s) for s in self.s]
-        print("TS keygen 3 enc", round(time.time() - now, 6), "seconds")
+        # print("TS keygen 3 enc", round(time.time() - now, 6), "seconds")
 
     def KGen_step_4(self):
         now = time.time()
@@ -112,11 +112,11 @@ class GKSParticipant(BGVParticipant):
                     + f"user {proof.name}"
                 )
         self.counter.inc_add(len(self.others["y"]))
-        print("TS keygen 4 verify", round(time.time() - now, 6), "seconds")
+        # print("TS keygen 4 verify", round(time.time() - now, 6), "seconds")
         sum_y = sum(i.data for i in self.others["y"])
         now = time.time()
         self.sum_ctx_s: list[Ctx] = self.__sum_ctx(self.others["ctx_s"])
-        print("TS keygen 4 sum", round(time.time() - now, 6), "seconds")
+        # print("TS keygen 4 sum", round(time.time() - now, 6), "seconds")
         self.pk: GksPk = GksPk(self.a_vector, sum_y)
 
     def sign_1(self):
@@ -128,10 +128,10 @@ class GKSParticipant(BGVParticipant):
         self.proof_r = self.relation_prover.prove_r(
             self.a_vector, r, self.com_w.r
         )
-        print("sign 1 prove", round(time.time() - now, 6), "seconds")
+        # print("sign 1 prove", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.ctx_r = [self.enc(i) for i in r]
-        print("sign 1 enc", round(time.time() - now, 6), "seconds")
+        # print("sign 1 enc", round(time.time() - now, 6), "seconds")
 
     def sign_2(self, mu, lagrange_x: int):
         now = time.time()
@@ -144,7 +144,7 @@ class GKSParticipant(BGVParticipant):
                     + f"user {proof.name}"
                 )
         self.counter.inc_add(3 * len(self.from_u["c_w"]))
-        print("sign 2 verify", round(time.time() - now, 6), "seconds")
+        # print("sign 2 verify", round(time.time() - now, 6), "seconds")
         self.sum_cw = self.cypari.liftall(
             sum(u.data for u in self.from_u["c_w"])
         )
@@ -157,10 +157,10 @@ class GKSParticipant(BGVParticipant):
         self.ctx_z: list[Ctx] = [
             c + r for c, r in zip(c_ctx, sum_ctx_r, strict=True)
         ]
-        print("sign 2 ctx math", round(time.time() - now, 6), "seconds")
+        # print("sign 2 ctx math", round(time.time() - now, 6), "seconds")
         now = time.time()
         self.ds = [self.t_dec(z, lagrange_x) for z in self.ctx_z]
-        print("sign 2 tdec", round(time.time() - now, 6), "seconds")
+        # print("sign 2 tdec", round(time.time() - now, 6), "seconds")
 
     def generate_signature(self) -> Signature:
         d0, d1 = [], []
@@ -170,7 +170,7 @@ class GKSParticipant(BGVParticipant):
         now = time.time()
         z = [self.comb(z, d) for z, d in zip(self.ctx_z, [d0, d1], strict=True)]
         self.counter.inc_add(len(self.from_u["com_w"]))
-        print("sign finalize comb", round(time.time() - now, 6), "seconds")
+        # print("sign finalize comb", round(time.time() - now, 6), "seconds")
         rho = sum(com.data.r for com in self.from_u["com_w"])
         return Signature(self.c, z, rho)
 

@@ -104,7 +104,7 @@ class BGVParticipant(Participant):
             self.sum_a,
             self.q,
         )
-        print("sk proof genereation", round(time.time() - now, 6), "seconds")
+        # print("sk proof genereation", round(time.time() - now, 6), "seconds")
         self.b_bar = to_tuple(
             "b_bar"
         )  # only shares partially, each part to who should get it
