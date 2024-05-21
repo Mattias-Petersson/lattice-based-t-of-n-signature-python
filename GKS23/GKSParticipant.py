@@ -136,12 +136,10 @@ class GKSParticipant(BGVParticipant):
                     + f"user {proof.name}"
                 )
         print("sign 2 verify", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.sum_cw = self.cypari.liftall(
             sum(u.data for u in self.from_u["c_w"])
         )
         self.c: poly = self.hash((self.sum_cw, self.pk, mu))
-        print("sign 2 misc", round(time.time() - now, 6), "seconds")
         now = time.time()
         c_ctx: list[Ctx] = [ci * self.c for ci in self.sum_ctx_s]
         sum_ctx_r = self.__sum_ctx(self.from_u["ctx_r"])
