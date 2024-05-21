@@ -1,4 +1,5 @@
 import itertools
+import time
 import numpy as np
 from BDLOP16.RelationProver import RelationProver
 from GKS23.MultiCounter import MultiCounter
@@ -27,14 +28,11 @@ class BGVParticipant(Participant):
         self.q = q
         self.BGV_comm_scheme = comm_scheme
         self.BGV_polynomial = self.BGV_comm_scheme.polynomial
+        self.kappa = self.BGV_comm_scheme.kappa
         self.BGV_relation_prover = BGV_relation_prover
         self.counter = counter
-        self.BGV_hash = lambda x: self.BGV_polynomial.hash(
-            self.BGV_comm_scheme.kappa, x
-        )
-        # 39 chosen to match Dilithium specs for number of +/- 1 in challenge.
+        self.BGV_hash = lambda x: self.BGV_polynomial.hash(self.kappa, x)
         self.sum_a = sum_a
-        self.kappa = 39
         self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
         if self.sum_a == None:
             self.a = self.BGV_polynomial.uniform_element()
@@ -76,7 +74,7 @@ class BGVParticipant(Participant):
 
         def make_b(s, e):
             if s.x != e.x:
-                raise ValueError()
+                raise ValueError("S and E secret share missmatch")
             self.counter.inc_add()
             self.counter.inc_mult(2)
             return SecretSharePoly(s.x, self.sum_a * s.p + self.q * e.p)
@@ -97,7 +95,7 @@ class BGVParticipant(Participant):
             c_e_bars.append(self.BGV_comm_scheme.commit(com_e_bar))
             s_rs.append(com_s_bar.r)
             e_rs.append(com_e_bar.r)
-
+        now = time.time()
         self.sk_proof = self.BGV_relation_prover.prove_sk(
             self.com_s.r,
             self.com_e.r,
@@ -106,6 +104,7 @@ class BGVParticipant(Participant):
             self.sum_a,
             self.q,
         )
+        print("sk proof genereation", round(time.time() - now, 6), "seconds")
         self.b_bar = to_tuple(
             "b_bar"
         )  # only shares partially, each part to who should get it
@@ -113,23 +112,6 @@ class BGVParticipant(Participant):
         self.coms_s_bar = to_tuple("coms_s_bar")
         self.c_s_bar = c_s_bars
         self.c_e_bar = c_e_bars
-
-    def reconstruct(self, data, t):
-        """
-        Attempts to reconstruct this participant's own b, using the shares
-        provided to them from the BGV class in the data param. All possible
-        combinations are tried, as all should return true. If any combination
-        returns false we print out the user for which the process failed, and
-        which key shares were responsible.
-        """
-        combs = list(itertools.combinations(data, t))
-        for c in combs:
-            pol = self.secret_share.reconstruct_poly([i.data for i in c])
-            if pol != self.b:
-                raise ValueError(
-                    f"Aborting. Reconstructing b failed for user {self.name}"
-                    + f", reconstructing polynomials for users: {[i.name for i in c]}",
-                )
 
     def check_open(self):
         for cs, ce, cs_bar, ce_bar, com, b, b_bar, proofs in zip(
@@ -142,12 +124,14 @@ class BGVParticipant(Participant):
             self.others["b_bars"],
             self.others["sk_proof"],
         ):
+            now = time.time()
             if cs_bar.name != com.name:
                 raise ValueError(
                     "Aborting. Name mismatch for participants."
                     + f"{self.name}: {cs_bar.name, com.name}"
                 )
-
+            namecheck = round(time.time() - now, 6)
+            partnow = time.time()
             if not self.BGV_comm_scheme.open(
                 CommitOpen(cs_bar.data[self.x - 1], com.data)
             ):
@@ -155,11 +139,20 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {cs_bar.name}"
                 )
+            open = round(time.time() - partnow, 6)
+            partnow = time.time()
             for indices in list(
                 itertools.combinations(
                     range(self.secret_share.n), self.secret_share.t
                 )
             ):
+                """
+                Attempts to reconstruct each participant's own b, using the shares
+                provided to them from the BGV class in the data param. All possible
+                combinations are tried, as all should return true. If any combination
+                returns false we print out the user for which the process failed, and
+                which key shares were responsible.
+                """
                 if (
                     self.secret_share.reconstruct_poly(
                         [b_bar.data[i] for i in indices]
@@ -170,6 +163,8 @@ class BGVParticipant(Participant):
                         f"Aborting. User {self.name} got an invalid sk proof for "
                         + f"user {cs_bar.name} for indicies {indices}"
                     )
+            reconstruct = round(time.time() - partnow, 6)
+            partnow = time.time()
             self.BGV_relation_prover.verify_sk(
                 b.data,
                 b_bar.data,
@@ -181,6 +176,13 @@ class BGVParticipant(Participant):
                 ce_bar.data,
                 *proofs.data,
             )
+            verify = round(time.time() - partnow, 6)
+            # print(
+            #     round(namecheck / (time.time() - now), 6),
+            #     round(open / (time.time() - now), 6),
+            #     round(reconstruct / (time.time() - now), 6),
+            #     round(verify / (time.time() - now), 6),
+            # )
 
     def generate_final(self):
         self.sum_b = sum(i.data for i in self.others["b"])
@@ -199,7 +201,7 @@ class BGVParticipant(Participant):
         return self.pk, self.sk
 
     def enc(self, m) -> Ctx:
-        r, e_prime, e_bis = self.BGV_polynomial.gaussian_array(3, 1)
+        r, e_prime, e_bis = self.BGV_polynomial.uniform_array(3, 2)
         mprime = self.cypari.liftall(m)
         self.counter.inc_add(3)
         self.counter.inc_mult(4)
@@ -219,7 +221,7 @@ class BGVParticipant(Participant):
     def t_dec(self, ctx: Ctx, x: int):
         self.counter.inc_add(1)
         m = self.sk.commit.m * ctx.u * x
-        e = self.BGV_polynomial.uniform_element(2)
+        e = self.BGV_polynomial.gaussian_element(2**5)
         self.counter.inc_mult()
         u = m + self.q * e
         com_e = self.__commit(e)

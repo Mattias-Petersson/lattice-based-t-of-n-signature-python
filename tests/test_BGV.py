@@ -3,12 +3,14 @@ import numpy as np
 
 from BGV12.BGV import BGV
 from type.classes import SecretSharePoly
-from utils.values import default_values
+from utils.values import Q, default_values
 
 
 @pytest.fixture(scope="session")
 def bgv():
-    return BGV(**default_values)
+    revised = np.random.choice([True, False])
+    q, _, N, tn, _ = default_values.values()
+    return BGV(q, Q, N, revised, tn)
 
 
 @pytest.fixture(scope="session", autouse=True)

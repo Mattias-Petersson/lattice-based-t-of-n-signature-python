@@ -1,3 +1,4 @@
+import time
 from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
@@ -58,6 +59,9 @@ class BGV(Controller):
         assert tn is not None
         comm = BDLOPCommScheme(q=self.q, N=self.N)
         secrets = SecretShare(tn, self.q)
+        sum_a = None
+        if self.revised:
+            sum_a = comm.polynomial.uniform_element()
         part = tuple(
             BGVParticipant(
                 comm,
@@ -68,7 +72,7 @@ class BGV(Controller):
                 1,
                 self.N,
                 i + 1,
-                None,
+                sum_a,
             )
             for i in range(tn[1])
         )
@@ -101,8 +105,10 @@ class BGV(Controller):
         self.recv_share("c_s")
         self.recv_share("c_e")
         self.recv_share("sk_proof")
+        now = time.time()
         for part in self.participants:
             part.check_open()
+        print("check open", round(time.time() - now, 6), "seconds")
 
     def __broadcast(self):
         """
@@ -111,21 +117,6 @@ class BGV(Controller):
         self.recv_share("c_s")
         self.recv_share("c_e")
         self.recv_share("b")
-
-    def __recreate(self):
-        """
-        Asserts that for all users, their b can be reconstructed from b_bars.
-        All combinations are tested for by each participant.
-        """
-        data = self.recv_value_shared("b_bar")
-        recreated = dict()
-        for i in data:
-            for j in i.data:
-                recreated[j.name] = recreated.get(j.name, []) + [
-                    NameData(i.name, j.data)
-                ]
-        for i in self.participants:
-            i.reconstruct(recreated[i.name], self.t)
 
     def __check_equiv(self, attr) -> poly:
         all_attr = [getattr(i, attr) for i in self.participants]
@@ -147,15 +138,29 @@ class BGV(Controller):
         throw an error. If all succeed we return a public key and a secret key
         for each participant.
         """
+        now = time.time()
         if not self.revised:
             self.assert_value_matches_hash("a")
+        print("verify a", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__compute_b()
+        print("compute b", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__share_b_bar()
+        print("share b", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__broadcast()
+        print("broadcast", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.assert_value_matches_hash("b")
-        self.__recreate()
+        print("assert b matches", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__share_commits()
-        return self.__finalize()
+        print("share commits", round(time.time() - now, 6), "seconds")
+        now = time.time()
+        finalize = self.__finalize()
+        print("finalize", round(time.time() - now, 6), "seconds")
+        return finalize
 
     def enc(self, u: BGVParticipant, m: poly) -> Ctx:
         return u.enc(m)

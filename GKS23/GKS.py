@@ -22,15 +22,18 @@ class GKS(
         q: int,
         p: int,
         N: int,
+        sigma: int,
         tn: TN,
         revised: bool,
     ):
+        now = time.time()
         self.revised = revised
         self.Q = Q
         self.q = q
         self.p = p
         self.N = N
         self.counter = MultiCounter()
+        self.sigma = sigma
         self.t, self.n = tn
         self.comm_scheme = BDLOPCommScheme(self.counter, q=self.q, N=self.N)
         self.polynomial = self.comm_scheme.polynomial
@@ -56,7 +59,8 @@ class GKS(
         if revised:
             a_ts = self.comm_scheme.polynomial.uniform_element()
             sum_a = self.BGV_comm_scheme.polynomial.uniform_element()
-
+        print("GKS initialization", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.participants: tuple[GKSParticipant, ...] = tuple(
             GKSParticipant(
                 self.comm_scheme,
@@ -69,6 +73,7 @@ class GKS(
                 self.q,
                 self.p,
                 self.N,
+                self.sigma,
                 i + 1,
                 a_ts,
                 sum_a,
@@ -78,7 +83,12 @@ class GKS(
         bgv_values = BGVValues(
             self.participants, self.BGV_comm_scheme, self.BGV_secret_share, tn
         )
+        print(
+            "participant initialization", round(time.time() - now, 6), "seconds"
+        )
+        now = time.time()
         self.BGV = BGV(self.counter, q, Q, N, self.revised, values=bgv_values)
+        print("BGV initialization", round(time.time() - now, 6), "seconds")
         self.BGV.DKGen()
         super().__init__(self.participants)
 
@@ -113,10 +123,17 @@ class GKS(
         KGen of actively secure GKS23. Step one is init BGV, which is done in
         the constructor and is thus not included here.
         """
+        now = time.time()
         if not self.revised:
             self.__KGen_step_2()
+        print("TS keygen 2", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__KGen_step_3()
-        return self.__finalize()
+        print("TS keygen 3", round(time.time() - now, 6), "seconds")
+        now = time.time()
+        finalize = self.__finalize()
+        print("TS finalize", round(time.time() - now, 6), "seconds")
+        return finalize
 
     def __sign_1(self, U: Iterable[GKSParticipant]):
         for p in U:
@@ -133,10 +150,20 @@ class GKS(
         self.__send_to_subset("com_w", U)
 
     def sign(self, mu: poly, U: Iterable[GKSParticipant]) -> list[Signature]:
+        now = time.time()
         lagrange_x = self.BGV.participant_lagrange(U)
+        print("calculate Lagrange", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__sign_1(U)
+        print("sign step 1", round(time.time() - now, 6), "seconds")
+        now = time.time()
         self.__sign_2(mu, U, lagrange_x)
-        return [p.generate_signature() for p in U]
+        print("sign step 2", round(time.time() - now, 6), "seconds")
+        now = time.time()
+        sigs = [p.generate_signature() for p in U]
+        print("sign finalize", round(time.time() - now, 6), "seconds")
+        now = time.time()
+        return sigs
 
     def vrfy(self, mu, u: GKSParticipant, signature: Signature):
         return u.verify_signature(mu, signature)
@@ -152,13 +179,15 @@ if __name__ == "__main__":
     participants = gks.KGen()
     gks.counter.print()
     gks.counter.reset()
-    print(round(time.time() - now, 6), "seconds")
+    print("Full key generation", round(time.time() - now, 6), "seconds")
     now = time.time()
     for _ in range(1):
         m_sign = gks.get_message()
         part = participants[0]
         signatures = gks.sign(m_sign, participants[: gks.t])
+        verifytime = time.time()
         res = gks.vrfy(m_sign, part, signatures[0])
+        print("verify signature", round(time.time() - verifytime, 6), "seconds")
         results[res] = results.get(res, 0) + 1
         gks.counter.print()
         gks.counter.reset()
