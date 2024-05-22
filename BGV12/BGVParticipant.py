@@ -1,5 +1,4 @@
 import itertools
-import time
 import numpy as np
 from BDLOP16.RelationProver import RelationProver
 from Models.CommitmentScheme import CommitmentScheme
@@ -31,7 +30,7 @@ class BGVParticipant(Participant):
         self.BGV_hash = lambda x: self.BGV_polynomial.hash(self.kappa, x)
         self.sum_a = sum_a
         self.ternary = lambda: self.BGV_polynomial.challenge(self.kappa)
-        if self.sum_a == None:
+        if self.sum_a is None:
             self.a = self.BGV_polynomial.uniform_element()
             self.a_hash = self.BGV_hash(self.a)
         self.cypari = self.BGV_polynomial.cypari
@@ -40,7 +39,7 @@ class BGVParticipant(Participant):
         return self.BGV_hash(x)
 
     def make_b(self):
-        if self.sum_a == None:
+        if self.sum_a is None:
             self.sum_a = sum(i.data for i in self.others["a"])
         self.s, self.e = self.ternary(), self.ternary()
 
@@ -88,7 +87,6 @@ class BGVParticipant(Participant):
             c_e_bars.append(self.BGV_comm_scheme.commit(com_e_bar))
             s_rs.append(com_s_bar.r)
             e_rs.append(com_e_bar.r)
-        now = time.time()
         self.sk_proof = self.BGV_relation_prover.prove_sk(
             self.com_s.r,
             self.com_e.r,
@@ -97,7 +95,6 @@ class BGVParticipant(Participant):
             self.sum_a,
             self.q,
         )
-        print("sk proof genereation", round(time.time() - now, 6), "seconds")
         self.b_bar = to_tuple(
             "b_bar"
         )  # only shares partially, each part to who should get it
@@ -117,14 +114,11 @@ class BGVParticipant(Participant):
             self.others["b_bars"],
             self.others["sk_proof"],
         ):
-            now = time.time()
             if cs_bar.name != com.name:
                 raise ValueError(
                     "Aborting. Name mismatch for participants."
                     + f"{self.name}: {cs_bar.name, com.name}"
                 )
-            namecheck = round(time.time() - now, 6)
-            partnow = time.time()
             if not self.BGV_comm_scheme.open(
                 CommitOpen(cs_bar.data[self.x - 1], com.data)
             ):
@@ -132,8 +126,6 @@ class BGVParticipant(Participant):
                     f"Aborting. User {self.name} got an invalid opening for "
                     + f"user {cs_bar.name}"
                 )
-            open = round(time.time() - partnow, 6)
-            partnow = time.time()
             for indices in list(
                 itertools.combinations(
                     range(self.secret_share.n), self.secret_share.t
@@ -156,8 +148,6 @@ class BGVParticipant(Participant):
                         f"Aborting. User {self.name} got an invalid sk proof for "
                         + f"user {cs_bar.name} for indicies {indices}"
                     )
-            reconstruct = round(time.time() - partnow, 6)
-            partnow = time.time()
             self.BGV_relation_prover.verify_sk(
                 b.data,
                 b_bar.data,
@@ -169,13 +159,6 @@ class BGVParticipant(Participant):
                 ce_bar.data,
                 *proofs.data,
             )
-            verify = round(time.time() - partnow, 6)
-            # print(
-            #     round(namecheck / (time.time() - now), 6),
-            #     round(open / (time.time() - now), 6),
-            #     round(reconstruct / (time.time() - now), 6),
-            #     round(verify / (time.time() - now), 6),
-            # )
 
     def generate_final(self):
         self.sum_b = sum(i.data for i in self.others["b"])

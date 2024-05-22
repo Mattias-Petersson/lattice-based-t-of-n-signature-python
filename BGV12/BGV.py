@@ -1,4 +1,3 @@
-import time
 from typing import Iterable
 from BDLOP16.BDLOP import BDLOP
 from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
@@ -7,7 +6,7 @@ from Models.CommitmentScheme import CommitmentScheme
 from Models.Controller import Controller
 from SecretSharing.SecretShare import SecretShare
 from BGV12.BGVParticipant import BGVParticipant
-from type.classes import TN, BGVValues, Ctx, NameData, poly
+from type.classes import TN, BGVValues, Ctx, poly
 from utils.Polynomial import Polynomial
 
 
@@ -103,10 +102,8 @@ class BGV(Controller):
         self.recv_share("c_s")
         self.recv_share("c_e")
         self.recv_share("sk_proof")
-        now = time.time()
         for part in self.participants:
             part.check_open()
-        print("check open", round(time.time() - now, 6), "seconds")
 
     def __broadcast(self):
         """
@@ -136,28 +133,14 @@ class BGV(Controller):
         throw an error. If all succeed we return a public key and a secret key
         for each participant.
         """
-        now = time.time()
         if not self.revised:
             self.assert_value_matches_hash("a")
-        print("verify a", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.__compute_b()
-        print("compute b", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.__share_b_bar()
-        print("share b", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.__broadcast()
-        print("broadcast", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.assert_value_matches_hash("b")
-        print("assert b matches", round(time.time() - now, 6), "seconds")
-        now = time.time()
         self.__share_commits()
-        print("share commits", round(time.time() - now, 6), "seconds")
-        now = time.time()
         finalize = self.__finalize()
-        print("finalize", round(time.time() - now, 6), "seconds")
         return finalize
 
     def enc(self, u: BGVParticipant, m: poly) -> Ctx:
