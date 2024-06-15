@@ -1,4 +1,4 @@
-from BDLOP16.BDLOP import BDLOP
+from BDLOP18.BDLOP import BDLOP
 from Models.CommitmentScheme import CommitmentScheme
 from type.classes import Commit, ProofOfOpenLinear
 from SecretSharing.SecretShare import SecretShare

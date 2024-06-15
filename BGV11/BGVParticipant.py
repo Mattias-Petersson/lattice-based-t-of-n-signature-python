@@ -1,6 +1,6 @@
 import itertools
 import numpy as np
-from BDLOP16.RelationProver import RelationProver
+from BDLOP18.RelationProver import RelationProver
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Participant import Participant
 from SecretSharing.SecretShare import SecretShare

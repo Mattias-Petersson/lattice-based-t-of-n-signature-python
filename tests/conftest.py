@@ -1,6 +1,6 @@
 import pytest
 
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP18.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import Commit
 from utils.Polynomial import Polynomial
 

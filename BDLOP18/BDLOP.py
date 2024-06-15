@@ -1,6 +1,6 @@
 import math
 import cypari2
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP18.BDLOPCommScheme import BDLOPCommScheme
 from type.classes import (
     Commit,
     ProofOfOpen,

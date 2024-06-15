@@ -1,11 +1,11 @@
 from typing import Iterable
-from BDLOP16.BDLOP import BDLOP
-from BDLOP16.BDLOPCommScheme import BDLOPCommScheme
-from BDLOP16.RelationProver import RelationProver
+from BDLOP18.BDLOP import BDLOP
+from BDLOP18.BDLOPCommScheme import BDLOPCommScheme
+from BDLOP18.RelationProver import RelationProver
 from Models.CommitmentScheme import CommitmentScheme
 from Models.Controller import Controller
 from SecretSharing.SecretShare import SecretShare
-from BGV12.BGVParticipant import BGVParticipant
+from BGV11.BGVParticipant import BGVParticipant
 from type.classes import TN, BGVValues, Ctx, poly
 from utils.Polynomial import Polynomial
 

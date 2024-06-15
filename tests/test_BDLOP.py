@@ -1,5 +1,5 @@
 import pytest
-from BDLOP16.BDLOP import BDLOP
+from BDLOP18.BDLOP import BDLOP
 from type.classes import Commit, ProofOfOpenLinear
 
 

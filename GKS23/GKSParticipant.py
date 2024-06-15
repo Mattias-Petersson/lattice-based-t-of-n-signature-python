@@ -1,5 +1,5 @@
-from BDLOP16.RelationProver import RelationProver
-from BGV12.BGVParticipant import BGVParticipant
+from BDLOP18.RelationProver import RelationProver
+from BGV11.BGVParticipant import BGVParticipant
 from Models.CommitmentScheme import CommitmentScheme
 from SecretSharing.SecretShare import SecretShare
 from type.classes import Commit, Ctx, GksPk, Signature, poly

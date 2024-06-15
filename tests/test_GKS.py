@@ -1,14 +1,14 @@
 import pytest
 import numpy as np
 from GKS23.GKS import GKS
-from utils.values import default_values, Q
+from utils.values import default_values, Q_multiple
 from type.classes import Ctx, GksPk
 
 
 @pytest.fixture(scope="session")
 def gks():
     revised = np.random.choice([True, False])
-    return GKS(Q, **default_values, revised=revised)
+    return GKS(Q_multiple, **default_values, revised=revised)
 
 
 @pytest.fixture(scope="session", autouse=True)
